@@ -32,11 +32,25 @@ def server():
         connection, address = s.accept()
         print('Connected with ' + address[0] + ':' + str(address[1]))
 
+        data = connection.recv(4096)
+        
+        connection.sendall( bytes("Received: " +str(data, "UTF-8"), "UTF-8") )
+
+        connection.shutdown( socket.SHUT_RDWR )
+        connection.close()
+
 @command("client")
 def client():
     
     s = socket.socket()
     s.connect(serveradress)
+
+    data = input("Give some data:")
+
+    s.sendall(bytes(data, "UTF-8"))
+
+    received = s.recv(4096)
+    print("Received: {0}".format(data))
 
 if __name__ == "__main__":
     commands[argv[1]]()
