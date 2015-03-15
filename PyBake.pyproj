@@ -31,6 +31,7 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="code\crumble.py" />
     <Compile Include="code\PyBake.py" />
   </ItemGroup>
   <ItemGroup>

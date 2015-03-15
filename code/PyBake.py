@@ -6,7 +6,9 @@ import socket
 from pathlib import Path
 from sys import argv
 
-serveradress = ("127.0.0.1",1337)
+
+clientConnection = ("87.160.255.156",1337)
+serveradress = ("192.168.0.150",1337)
 
 
 commands = {}
@@ -22,7 +24,7 @@ def server():
 
     print("Starting up Server")
 
-    s = socket.socket()
+    s = socket.socket( socket.AF_INET, socket.SOCK_STREAM)
     s.bind(serveradress)
     s.listen(5)
 
@@ -57,8 +59,8 @@ def server():
 @command("client")
 def client():
     
-    s = socket.socket()
-    s.connect(serveradress)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(clientConnection)
 
     data = input("FileName:")
 
