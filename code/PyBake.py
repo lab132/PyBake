@@ -2,18 +2,38 @@
 Baking py since 2015
 '''
 
-import socket
 import os
-from sys import argv
-import urllib2
+import sys
+
+# Insert current working dir to the sys path so we can import the crumble in there.
+sys.path.insert(0, os.getcwd())
+
+try:
+    import crumble
+except:
+    print("Unable to load crumble.py")
+    raise
+
+import socket
+import importlib
+from urllib.request import urlopen
 import json
+import pathlib
 
+class ServerConfig:
+    """docstring"""
+    def __init__(self, *, host, port=1337, protocol="http"):
+        self.host = host
+        self.port = port
+        self.protocol = protocol
 
-clientConnection = ("87.160.255.156",1337)
-serveradress = ("192.168.0.150",1337)
+    def __str__(self):
+        return "{0.protocol}://{0.host}:{0.port}".format(self)
 
+    def __repr__(self):
+        return "Server config {0}".format(self)
 
-
+Path = pathlib.Path
 
 commands = {}
 
@@ -47,13 +67,17 @@ def server():
         print(p)
         return jsonify({"values" : p})
 
-
-    app.run(debug=True,port=1337,host="0.0.0.0")
+    app.run(debug=True, host=crumble.server.host, port=crumble.server.port)
 
 @command("client")
 def client():
-    response = json.load(urllib2.urlopen("http://127.0.0.1:1337/list_packages"))
+    response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
     print(response)
 
+@command("oven")
+def oven():
+    # This command used an ingredients.json and a recipe.py file to generate a crumble (server-side package)
+    pass
+
 if __name__ == "__main__":
-    commands[argv[1]]()
+    commands[sys.argv[1]]()
