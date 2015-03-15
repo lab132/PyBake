@@ -31,8 +31,20 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="code\baker.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="code\config.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="code\crumble.py" />
+    <Compile Include="code\pastry.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="code\PyBake.py" />
+    <Compile Include="code\utils.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="{2af0f10d-7135-4994-9156-5d01c9c11b7e}\3.4" />

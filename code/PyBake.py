@@ -5,13 +5,16 @@ Baking py since 2015
 import socket
 from pathlib import Path
 from sys import argv
-
+from crumble import *
 
 clientConnection = ("87.160.255.156",1337)
 serveradress = ("192.168.0.150",1337)
 
 
 commands = {}
+
+class Baker:
+    pass
 
 def command(name):
     def commandwrapper(f):
@@ -21,20 +24,17 @@ def command(name):
 
 @command("server")
 def server():
-
     print("Starting up Server")
 
-    s = socket.socket( socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(serveradress)
-    s.listen(5)
+    baker = Baker()
 
     print("Server is listening on port {0}".format(serveradress[1]))
 
     while True:
-        connection, address = s.accept()
+        baker.serve()
         print('Connected with ' + address[0] + ':' + str(address[1]))
 
-        data = connection.recv(4096)
+        data = baker.connection.recv(4096)
         fileName = str(data,"UTF-8")
 
 
@@ -43,18 +43,17 @@ def server():
         print("Filepath is: {0}".format(filePath))
 
         if filePath.exists():
-            fileHandle = filePath.open("br")
-            fileContents = fileHandle.read()
-            fileHandle.close()
+            c = Crumble(CrumbleType.PackageFile)
 
-            connection.sendall(b"1" +  fileContents)
+            fileContents = None
+            with filePath.open("br") as fileHandle:
+                fileContents = fileHandle.read()
+
+            baker.connection.sendall(b"1" +  fileContents)
+            baker.close()
 
         else:
-            connection.sendall(b"0" + bytes("File not found","UTF-8"))
-
-
-        connection.shutdown( socket.SHUT_RDWR )
-        connection.close()
+            baker.error("File not found")
 
 @command("client")
 def client():
