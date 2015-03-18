@@ -5,33 +5,33 @@ from PyBake import *
 ingredients = []
 
 def extract_platform(path):
-    """Parses a platform object from something like 'WinVs2013Debug32'."""
+    """Parses a platform object from something like 'WinVs2013RelDeb32'."""
     name = path.name
-    print("Extracting platform from '{0}'".format(name))
 
     p = Platform()
 
     # Platform name.
     i_name = 1
-    while name[i_name].islower():
+    while not name[i_name].isupper():
         i_name += 1
     p.name = name[:i_name]
 
     # Platform generator.
     i_gen = i_name + 1
-    while name[i_gen].islower():
+    while not name[i_gen].isupper():
         i_gen += 1
     p.generator = name[i_name:i_gen]
 
     # Platform config
     i_cfg = i_gen + 1
-    while name[i_cfg].islower():
+    while not name[i_cfg].isdigit():
         i_cfg += 1
     p.config = name[i_gen:i_cfg]
 
     # Platform bits.
     p.bits = int(name[-2:]) # Last 2 characters are the bits
 
+    print("Extracted platform: {0} => {1}".format(name, repr(p)))
     return p
 
 
@@ -52,7 +52,7 @@ ezEnginePath_Lib.resolve()
 print("headers")
 tags = [ "header-file" ]
 files = ezEnginePath_Headers.rglob("*.h")
-ingredients.extend([ Ingredient(h, tags=["header-file"]) for h in files ])
+ingredients.extend([ Ingredient(h.relative_to(ezEngineRoot), tags=["header-file"]) for h in files ])
 
 
 print("runtime_files")
@@ -67,7 +67,7 @@ for subpath in path:
     files.extend(subpath.rglob("ez*.dll"))
     files.extend(subpath.rglob("ez*.pdb"))
     files.extend(subpath.rglob("ez*.so"))
-    ingredients.extend([ Ingredient(x, platform=p, tags=tags) for x in files ])
+    ingredients.extend([ Ingredient(x.relative_to(ezEngineRoot), platform=p, tags=tags) for x in files ])
 
 
 print("compiletime_files")
@@ -80,4 +80,10 @@ for subpath in path:
     p = extract_platform(subpath)
 
     files.extend(subpath.rglob("ez*.lib"))
-    ingredients.extend([ Ingredient(x, platform=p, tags=tags) for x in files ])
+    ingredients.extend([ Ingredient(x.relative_to(ezEngineRoot), platform=p, tags=tags) for x in files ])
+
+@regger
+def foo():
+    print("+++ bar +++")
+
+print("__ done __")

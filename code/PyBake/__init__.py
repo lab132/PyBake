@@ -16,8 +16,11 @@ import pathlib
 from copy import deepcopy
 from importlib import import_module
 
-# Relative path to the user-defined script.
-userRecipe = "recipe"
+reg = []
+
+def regger(func):
+    reg.append(func)
+    return func
 
 class ServerConfig:
     """docstring"""
@@ -26,11 +29,8 @@ class ServerConfig:
         self.port = port
         self.protocol = protocol
 
-    def __str__(self):
-        return "{0.protocol}://{0.host}:{0.port}".format(self)
-
     def __repr__(self):
-        return "Server config {0}".format(self)
+        return "{0.protocol}://{0.host}:{0.port}".format(self)
 
 class Platform:
     """Object describing a platform such as 'Windows 64 bit VisualStudio2013 Debug'."""
@@ -49,10 +49,19 @@ class Platform:
     def __str__(self):
         if self.detailed_name is not None:
             return self.detailed_name
-        return self.name
+        return "Platform '{}'".format(self.name)
 
     def __repr__(self):
-        return "<{0.name} ({0.detailed_name}) {0.bits} bit {0.generator} {0.config}: {0.user_data}".format(self)
+        return "<{0.name} ({0.detailed_name}) {0.bits} bit {0.generator} {0.config}: {0.user_data}>".format(self)
+
+    def __iter__(self):
+        print("Platform.iter")
+        yield ("name", self.name,)
+        yield ("detailed_name", self.detailed_name,)
+        yield ("bits", self.bits,)
+        yield ("generator", self.generator,)
+        yield ("config", self.config,)
+        yield ("user_data", self.user_data,)
 
     # Represents all platforms.
     All = None # Is initialized after the declaration of this class
@@ -70,11 +79,6 @@ class Platform:
 
 Platform.All = Platform(name="all")
 
-class Pastry:
-    """File meta data."""
-    def __init__(self, path):
-        self.path = path
-
 class Ingredient:
     """A wrapper for an existing file that has tags attached to it."""
     def __init__(self, path, *, platform=Platform.All, tags=[]):
@@ -86,65 +90,21 @@ class Ingredient:
         return "{0.path.name}<{0.platform}>{0.tags}".format(self)
 
     def __repr__(self):
-        return "{}<{}>{}".format(repr(self.path.name), repr(self.platform), repr(self.tags))
+        return "{}{}{}".format(repr(self.path), repr(self.platform), repr(self.tags))
+
+    def __iter__(self):
+        print("Ingredient.iter")
+        yield ("path", self.path,)
+        yield ("platform", self.platform,)
+        yield ("tags", self.tags,)
+
+class Baker(json.JSONEncoder):
+    """docstring for Baker"""
+    def default(self, obj):
+        if isinstance(obj, Ingredient) or isinstance(obj, Platform):
+            return dict(obj)
+        if isinstance(obj, Path):
+            return obj.as_posix()
+        return json.JSONEncoder.default(self, obj)        
 
 Path = pathlib.Path
-
-commands = {}
-
-def command(name):
-    def commandwrapper(f):
-        commands[name] = f
-        return f
-    return commandwrapper
-
-@command("server")
-def server():
-
-    from flask import Flask, request, session, g, redirect, url_for, abort, \
-    render_template, flash, jsonify
-    # create our little application :)
-    app = Flask(__name__)
-    # Load default config and override config from an environment variable
-
-    app.config.update(dict(
-    DATABASE=os.path.join(app.root_path, 'flaskr.db'),
-    DEBUG=True,
-    SECRET_KEY='development key',
-    USERNAME='admin',
-    PASSWORD='default'
-    ))
-    app.config.from_envvar('FLASKR_SETTINGS', silent=True)
-
-    @app.route("/list_packages")
-    def listPackages():
-        p = os.listdir(".")
-        print(p)
-        return jsonify({"values" : p})
-    import crumble
-    app.run(debug=True, host=crumble.server.host, port=crumble.server.port)
-
-@command("client")
-def client():
-    import crumble
-    response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
-    print(response)
-
-@command("oven")
-def oven():
-    """
-    This command uses a recipe.py file to generate a pastry.json (server-side package/crumble).
-    """
-    global recipes
-    recipes = []
-
-    # Import recipe.py, which should be defined by the user.
-    # This will register functions in the global variable `recipes`.
-    recipe = import_module(userRecipe)
-
-    print("Ingredients:")
-    for ing in recipe.ingredients:
-        print("  {0}".format(repr(ing)))
-
-if __name__ == "__main__":
-    commands[sys.argv[1]]()
