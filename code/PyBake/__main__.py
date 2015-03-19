@@ -66,24 +66,26 @@ def execute_server(args):
     app.run(debug=True, host=crumble.server.host, port=crumble.server.port)
 
 def execute_client(args):
-    #import crumble
+    import crumble
     print(args)
-    print(args.config.read())
-    #response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
-    #print(response)
+    #print(args.config.read())
+    response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
+    print(response)
 
 def execute_oven(args):
     print("Executing oven")
     print(args)
-    #recipeScript = "recipe.py" if len(sys.argv) == 2 else sys.argv[2]
-    #from PyBake import oven
-    #oven.run(recipeScript)
+    recipeScript = args.recipe
+    from PyBake import oven
+    oven.run(recipeScript)
 
 
 ## Main Parser
 ## ====
 mainParser = argparse.ArgumentParser(prog="PyBake",description=description)
 mainParser.add_argument("-V", "--Version", action="version", version="%(prog)s v{Release}.{Major}.{Minor}".format(**version))
+mainParser.add_argument("-v", "--verbose", action="count", default=0,
+                        help="Set the verbosity of the output, more v's generates more verbose output (Up to 5).")
 
 ## Subparsers
 ## ====
