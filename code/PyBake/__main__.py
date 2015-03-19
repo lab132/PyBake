@@ -26,15 +26,22 @@ ovenDescription = textwrap.dedent(
     """
     Tool to create crumbles.
     """
-)
+    )
 
 clientDescription = textwrap.dedent(
     """
     Syncs all dependencies of the current Project with the server.
     """
-)
+    )
 
-def server(args):
+serverDescription = textwrap.dedent(
+    """
+    Sets up a server for crumble management
+    """
+    )
+
+def execute_server(args):
+    print(args)
     from flask import Flask, request, session, g, redirect, url_for, abort, \
     render_template, flash, jsonify
     # create our little application :)
@@ -99,6 +106,15 @@ clientParser = subparsers.add_parser("client", help=clientDescription, descripti
 clientParser.add_argument("-c" , "--config", type=argparse.FileType(mode="r", encoding="UTF-8"), default="config.py",
                           help="Supply a custom config for the client (defaults to config.py)")
 clientParser.set_defaults(func=execute_client)
+
+## ServerParser
+## ====
+
+serverParser = subparsers.add_parser("server", help=serverDescription, description=serverDescription)
+
+serverParser.add_argument("-c" , "--config", type=argparse.FileType(mode="r", encoding="UTF-8"), default="serverconfig.py",
+                          help="Supply a custom config for the server (defaults to serverconfig.py")
+serverParser.set_defaults(func=execute_server)
 
 ## Main
 ## ====
