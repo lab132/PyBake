@@ -75,9 +75,8 @@ def execute_client(args):
 def execute_oven(args):
     print("Executing oven")
     print(args)
-    recipeScript = args.recipe
-    from PyBake import oven
-    oven.run(recipeScript)
+    from PyBake import oven, Path
+    oven.run(Path(args.working_dir), Path(args.recipe), Path(args.output), args.indent_output)
 
 
 ## Main Parser
@@ -97,7 +96,14 @@ subparsers.required = True
 ## ====
 ovenParser = subparsers.add_parser("oven", help=ovenDescription, description=ovenDescription)
 
-ovenParser.add_argument("-r", "--recipe", default="recipe.py", help="Supply a custom recipe, (defaults to recipe.py)")
+ovenParser.add_argument("-r", "--recipe", default="recipe.py",
+                        help="Supply the path to a custom recipe relative to the working dir. Defaults to recipe.py.")
+ovenParser.add_argument("-o", "--output", default="pastry.json",
+                        help="The resulting JSON file relative to the working dir.")
+ovenParser.add_argument("-d", "--working-dir", default=".",
+                        help="The working directory.")
+ovenParser.add_argument("--indent-output", default=True,
+                        help="Whether to produce a more human-friendly, indented JSON file.")
 ovenParser.set_defaults(func=execute_oven)
 
 ## ClientParser

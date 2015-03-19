@@ -16,10 +16,9 @@ import pathlib
 from copy import deepcopy
 from importlib import import_module
 
-reg = []
-
-def regger(func):
-    reg.append(func)
+recipes = []
+def recipe(func):
+    recipes.append(func)
     return func
 
 class ServerConfig:
@@ -122,15 +121,12 @@ class ChangeDir:
             pass
     """
     def __init__(self, path):
-        self.previous = Path(".")
-        self.previous.resolve()
-        print(self.previous, repr(self.previous))
-        self.current = Path(path)
+        self.previous = Path(".").resolve()
         try:
-            self.current.resolve()
+            self.current = Path(path).resolve()
             assert self.current.is_dir()
         except FileNotFoundError as ex:
-            print("Cannot change directory:")
+            print("Cannot change into directory:")
             print(ex)
             self.current = self.previous
 
@@ -142,7 +138,6 @@ class ChangeDir:
 
     def enter(self):
         import os
-        self.current.resolve()
         os.chdir(self.current.as_posix())
 
     def exit(self):
