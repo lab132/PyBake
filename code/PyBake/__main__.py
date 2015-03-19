@@ -58,10 +58,12 @@ def server(args):
     import crumble
     app.run(debug=True, host=crumble.server.host, port=crumble.server.port)
 
-def client(args):
-    import crumble
-    response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
-    print(response)
+def execute_client(args):
+    #import crumble
+    print(args)
+    print(args.config.read())
+    #response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
+    #print(response)
 
 def execute_oven(args):
     print("Executing oven")
@@ -89,6 +91,14 @@ ovenParser = subparsers.add_parser("oven", help=ovenDescription, description=ove
 ovenParser.add_argument("-r", "--recipe", default="recipe.py", help="Supply a custom recipe, (defaults to recipe.py)")
 ovenParser.set_defaults(func=execute_oven)
 
+## ClientParser
+## ====
+
+clientParser = subparsers.add_parser("client", help=clientDescription, description=clientDescription)
+
+clientParser.add_argument("-c" , "--config", type=argparse.FileType(mode="r", encoding="UTF-8"), default="config.py",
+                          help="Supply a custom config for the client (defaults to config.py)")
+clientParser.set_defaults(func=execute_client)
 
 ## Main
 ## ====
