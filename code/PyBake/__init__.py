@@ -105,6 +105,41 @@ class Baker(json.JSONEncoder):
             return dict(obj)
         if isinstance(obj, Path):
             return obj.as_posix()
-        return json.JSONEncoder.default(self, obj)        
+        return json.JSONEncoder.default(self, obj)
 
 Path = pathlib.Path
+
+class ChangeDir:
+    """
+    Change the current directory. The previous directory will be restored when
+    Usage:
+        with ChangeDir('some/dir'):
+            pass
+    """
+    def __init__(self, path):
+        self.previous = Path(".")
+        self.previous.resolve()
+        print(self.previous, repr(self.previous))
+        self.current = Path(path)
+        try:
+            self.current.resolve()
+            assert self.current.is_dir()
+        except FileNotFoundError as ex:
+            print("Cannot change directory:")
+            print(ex)
+            self.current = self.previous
+
+    def __enter__(self):
+        self.enter()
+
+    def __exit__(self, type, value, traceback):
+        self.exit()
+
+    def enter(self):
+        import os
+        self.current.resolve()
+        os.chdir(self.current.as_posix())
+
+    def exit(self):
+        import os
+        os.chdir(self.previous.as_posix())
