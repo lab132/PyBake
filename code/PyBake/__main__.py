@@ -5,18 +5,36 @@ if __name__ != '__main__':
     raise Error("This module is meant to be executed, not imported!")
 
 import sys
+import argparse
+import textwrap
 
+## Data for Argparser
 
-commands = {}
+version ={
+    "Release" : 0,
+    "Major" : 0,
+    "Minor" : 1,
+}
+description = textwrap.dedent(
+    """
+    Dependency Management Tool for any kind of dependencies.
+    A single dependency is referred to as a crumble.
+    """
+    )
 
-def command(name):
-    def helper(func):
-        commands[name] = func
-        return func
-    return helper
+ovenDescription = textwrap.dedent(
+    """
+    Tool to create crumbles.
+    """
+)
 
-@command("server")
-def server():
+clientDescription = textwrap.dedent(
+    """
+    Syncs all dependencies of the current Project with the server.
+    """
+)
+
+def server(args):
     from flask import Flask, request, session, g, redirect, url_for, abort, \
     render_template, flash, jsonify
     # create our little application :)
@@ -40,29 +58,41 @@ def server():
     import crumble
     app.run(debug=True, host=crumble.server.host, port=crumble.server.port)
 
-@command("client")
-def client():
+def client(args):
     import crumble
     response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
     print(response)
 
-@command("oven")
-def execute_oven():
-    recipeScript = "recipe.py" if len(sys.argv) == 2 else sys.argv[2]
-    from PyBake import oven
-    oven.run(recipeScript)
+def execute_oven(args):
+    print("Executing oven")
+    print(args)
+    #recipeScript = "recipe.py" if len(sys.argv) == 2 else sys.argv[2]
+    #from PyBake import oven
+    #oven.run(recipeScript)
+
+
+## Main Parser
+## ====
+mainParser = argparse.ArgumentParser(prog="PyBake",description=description)
+mainParser.add_argument("-V", "--Version", action="version", version="%(prog)s v{Release}.{Major}.{Minor}".format(**version))
+
+## Subparsers
+## ====
+subparsers = mainParser.add_subparsers(dest="CommandName",title="Commands")
+# Commands are required except when calling -h or -V
+subparsers.required = True
+
+## OvenParser
+## ====
+ovenParser = subparsers.add_parser("oven", help=ovenDescription, description=ovenDescription)
+
+ovenParser.add_argument("-r", "--recipe", default="recipe.py", help="Supply a custom recipe, (defaults to recipe.py)")
+ovenParser.set_defaults(func=execute_oven)
+
 
 ## Main
 ## ====
 
-if len(sys.argv) == 1:
-    print("Expected a command name as first argument.")
-    sys.exit(-1)
+args = mainParser.parse_args()
 
-commandName = sys.argv[1]
-if not commandName in commands:
-    print("Unknown command name: {}".format(commandName))
-    sys.exit(1)
-
-# Call the command
-commands[commandName]()
+args.func(args)
