@@ -29,8 +29,11 @@ class ServerConfig:
         self.port = port
         self.protocol = protocol
 
+    def __str__(self):
+        return "{}://{}:{}".format(self.protocol, self.host, self.port)
+
     def __repr__(self):
-        return "{0.protocol}://{0.host}:{0.port}".format(self)
+        return "ServerConfig({})".format(self)
 
 class Platform:
     """Object describing a platform such as 'Windows 64 bit VisualStudio2013 Debug'."""
@@ -55,7 +58,6 @@ class Platform:
         return "<{0.name} ({0.detailed_name}) {0.bits} bit {0.generator} {0.config}: {0.user_data}>".format(self)
 
     def __iter__(self):
-        print("Platform.iter")
         yield ("name", self.name,)
         yield ("detailed_name", self.detailed_name,)
         yield ("bits", self.bits,)
@@ -87,16 +89,19 @@ class Ingredient:
         self.tags = tags
 
     def __str__(self):
-        return "{0.path.name}<{0.platform}>{0.tags}".format(self)
+        return "{0.path.name} for {0.platform}".format(self)
 
     def __repr__(self):
-        return "{}{}{}".format(repr(self.path), repr(self.platform), repr(self.tags))
+        return "Ingredient({}{}{})".format(repr(self.path), repr(self.platform), repr(self.tags))
 
     def __iter__(self):
-        print("Ingredient.iter")
         yield ("path", self.path,)
         yield ("platform", self.platform,)
         yield ("tags", self.tags,)
+
+    def make_relative_to(root):
+        if self.path.is_absolute():
+            self.path = self.path.relative_to(root)
 
 class Baker(json.JSONEncoder):
     """docstring for Baker"""
