@@ -107,8 +107,8 @@ ovenParser.add_argument("pastry_name",
 ovenParser.add_argument("pastry_version",
                         type=str,
                         help="The version of the crumble.")
-ovenParser.add_argument("-r", "--recipe", type=Path, default=Path("recipe.py"),
-                        help="Supply the path to a custom recipe relative to the working dir. Defaults to recipe.py.")
+ovenParser.add_argument("-r", "--recipe", type=str, default="recipe",
+                        help="Name of the recipe module. This module is expected to live directly in the working directory, not sub-directory, with the name `<recipe>.py`.")
 ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.json"),
                         help="The resulting JSON file relative to the working dir.")
 ovenParser.add_argument("-d", "--working-dir", type=Path, default=Path("."),

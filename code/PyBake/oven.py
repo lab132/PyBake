@@ -6,13 +6,6 @@ from importlib import import_module
 from PyBake import *
 
 def run(*, pastry_name, pastry_version, working_dir, recipe, output, indent_output, **kwargs):
-  # Make sure the recipe exists.
-  # TODO loading a module by filename does not work currently.
-  #recipe = recipe.resolve()
-
-  # Remove the file extension.
-  recipeModule = recipe.parent / recipe.stem
-
   # Make sure the working dir exists.
   working_dir = working_dir.resolve()
 
@@ -21,10 +14,10 @@ def run(*, pastry_name, pastry_version, working_dir, recipe, output, indent_outp
 
   # Change into the working directory given by the user.
   with ChangeDir(working_dir):
-    print("Processing recipe '{0}'".format(recipeModule.as_posix()))
+    print("Processing recipe '{0}'".format(recipe))
 
     # Load the recipe, which will register some handlers that yield ingredients.
-    import_module(recipeModule.as_posix())
+    import_module(recipe)
     if len(recipes) == 0:
       print("No recipes found. Make sure to create functions and decorate them with @recipe.")
       return
