@@ -59,7 +59,7 @@ class Platform:
         yield ("bits", self.bits,)
         yield ("generator", self.generator,)
         yield ("config", self.config,)
-        yield ("user_data", self.user_data,)
+        yield ("user_data", str(self.user_data),)
 
     # Represents all platforms.
     All = None # Is initialized after the declaration of this class
@@ -91,22 +91,13 @@ class Ingredient:
         return "Ingredient({}{}{})".format(repr(self.path), repr(self.platform), repr(self.tags))
 
     def __iter__(self):
-        yield ("path", self.path,)
-        yield ("platform", self.platform,)
+        yield ("path", self.path.as_posix(),)
+        yield ("platform", dict(self.platform),)
         yield ("tags", self.tags,)
 
     def make_relative_to(root):
         if self.path.is_absolute():
             self.path = self.path.relative_to(root)
-
-class Baker(json.JSONEncoder):
-    """docstring for Baker"""
-    def default(self, obj):
-        if isinstance(obj, Ingredient) or isinstance(obj, Platform):
-            return dict(obj)
-        if isinstance(obj, Path):
-            return obj.as_posix()
-        return json.JSONEncoder.default(self, obj)
 
 Path = pathlib.Path
 
