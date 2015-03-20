@@ -12,6 +12,7 @@ sys.path.insert(0, os.getcwd())
 
 import argparse
 import textwrap
+from PyBake import Path
 
 ## Data for Argparser
 
@@ -81,7 +82,7 @@ def execute_oven(args):
     print("Executing oven")
     print(args)
     from PyBake import oven, Path
-    oven.run(Path(args.working_dir), Path(args.recipe), Path(args.output), args.indent_output)
+    oven.run(**vars(args))
 
 
 ## Main Parser
@@ -101,13 +102,13 @@ subparsers.required = True
 ## ====
 ovenParser = subparsers.add_parser("oven", help=ovenDescription, description=ovenDescription)
 
-ovenParser.add_argument("-r", "--recipe", default="recipe.py",
+ovenParser.add_argument("-r", "--recipe", type=Path, default=Path("recipe.py"),
                         help="Supply the path to a custom recipe relative to the working dir. Defaults to recipe.py.")
-ovenParser.add_argument("-o", "--output", default="pastry.json",
+ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.json"),
                         help="The resulting JSON file relative to the working dir.")
-ovenParser.add_argument("-d", "--working-dir", default=".",
+ovenParser.add_argument("-d", "--working-dir", type=Path, default=Path("."),
                         help="The working directory.")
-ovenParser.add_argument("--indent-output", default=True,
+ovenParser.add_argument("--indent-output", type=bool, default=True,
                         help="Whether to produce a more human-friendly, indented JSON file.")
 ovenParser.set_defaults(func=execute_oven)
 
