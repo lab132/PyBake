@@ -2,11 +2,17 @@
 
 # Make sure this module is executed, not imported.
 if __name__ != '__main__':
-    raise Error("This module is meant to be executed, not imported!")
+    raise RuntimeError("This module is meant to be executed, not imported!")
 
 import sys
+import os
+
+# Insert current working dir to the sys path so we can import python modules from there.
+sys.path.insert(0, os.getcwd())
+
 import argparse
 import textwrap
+from PyBake import Path
 
 ## Data for Argparser
 
@@ -74,10 +80,8 @@ def execute_client(args):
 
 def execute_oven(args):
     print("Executing oven")
-    print(args)
-    recipeScript = args.recipe
     from PyBake import oven
-    oven.run(recipeScript)
+    oven.run(**vars(args))
 
 
 ## Main Parser
@@ -97,7 +101,20 @@ subparsers.required = True
 ## ====
 ovenParser = subparsers.add_parser("oven", help=ovenDescription, description=ovenDescription)
 
-ovenParser.add_argument("-r", "--recipe", default="recipe.py", help="Supply a custom recipe, (defaults to recipe.py)")
+ovenParser.add_argument("pastry_name",
+                        type=str,
+                        help="The name of the crumble to create.")
+ovenParser.add_argument("pastry_version",
+                        type=str,
+                        help="The version of the crumble.")
+ovenParser.add_argument("-r", "--recipe", type=str, default="recipe",
+                        help="Name of the recipe module. This module is expected to live directly in the working directory, not sub-directory, with the name `<recipe>.py`.")
+ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.json"),
+                        help="The resulting JSON file relative to the working dir.")
+ovenParser.add_argument("-d", "--working-dir", type=Path, default=Path("."),
+                        help="The working directory.")
+ovenParser.add_argument("--indent-output", type=bool, default=True,
+                        help="Whether to produce a more human-friendly, indented JSON file.")
 ovenParser.set_defaults(func=execute_oven)
 
 ## ClientParser
