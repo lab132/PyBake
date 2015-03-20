@@ -80,8 +80,7 @@ def execute_client(args):
 
 def execute_oven(args):
     print("Executing oven")
-    print(args)
-    from PyBake import oven, Path
+    from PyBake import oven
     oven.run(**vars(args))
 
 
@@ -102,6 +101,12 @@ subparsers.required = True
 ## ====
 ovenParser = subparsers.add_parser("oven", help=ovenDescription, description=ovenDescription)
 
+ovenParser.add_argument("pastry_name",
+                        type=str,
+                        help="The name of the crumble to create.")
+ovenParser.add_argument("pastry_version",
+                        type=str,
+                        help="The version of the crumble.")
 ovenParser.add_argument("-r", "--recipe", type=Path, default=Path("recipe.py"),
                         help="Supply the path to a custom recipe relative to the working dir. Defaults to recipe.py.")
 ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.json"),

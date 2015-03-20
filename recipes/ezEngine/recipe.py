@@ -52,13 +52,14 @@ ezEnginePath_Lib.resolve()
 
 @recipe
 def get_header_files():
-  print("headers")
+  print("Assemlbing 'header-file's")
   tags = [ "header-file" ]
   for filename in ezEnginePath_Headers.rglob("*.h"):
     yield Ingredient(filename, tags=["header-file"])
 
 @recipe
 def get_runtime_files():
+  print("Assemlbing 'rt-file's")
   tags = [ "rt-file" ]
   path = ezEnginePath_Bin.glob("*")
   for subpath in path:
@@ -78,6 +79,6 @@ def get_compiletime_files():
     if not subpath.is_dir() or subpath.match("*Tests"):
       continue
     p = extract_platform(subpath)
- 
+
     for filename in subpath.rglob("ez*.lib"):
       yield Ingredient(filename, platform=p, tags=tags)
