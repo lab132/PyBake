@@ -5,6 +5,7 @@ if __name__ != '__main__':
     raise RuntimeError("This module is meant to be executed, not imported!")
 
 import sys
+import os
 
 # Insert current working dir to the sys path so we can import python modules from there.
 sys.path.insert(0, os.getcwd())

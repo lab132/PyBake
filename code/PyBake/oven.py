@@ -28,7 +28,7 @@ def run(workingDir, recipeScript, jsonTarget, indentOutput):
 
         ingredients = []
         for rcp in recipes:
-            ingredients.extend([ dict(ing) for ing in rcp() ])
+            ingredients.extend(dict(ing) for ing in rcp())
 
         pastry = dict(
             name="???",
