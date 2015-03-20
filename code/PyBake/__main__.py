@@ -2,9 +2,13 @@
 
 # Make sure this module is executed, not imported.
 if __name__ != '__main__':
-    raise Error("This module is meant to be executed, not imported!")
+    raise RuntimeError("This module is meant to be executed, not imported!")
 
 import sys
+
+# Insert current working dir to the sys path so we can import python modules from there.
+sys.path.insert(0, os.getcwd())
+
 import argparse
 import textwrap
 

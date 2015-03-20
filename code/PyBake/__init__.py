@@ -2,11 +2,8 @@
 Baking py since 2015
 '''
 
-import os
-import sys
-
-# Insert current working dir to the sys path so we can import python modules from there.
-sys.path.insert(0, os.getcwd())
+if __name__ == "__main__":
+    raise RuntimeError("__init__.py is not supposed to be executed!")
 
 import socket
 import importlib
@@ -121,7 +118,7 @@ class ChangeDir:
             pass
     """
     def __init__(self, path):
-        self.previous = Path(".").resolve()
+        self.previous = Path.cwd()
         try:
             self.current = Path(path).resolve()
             assert self.current.is_dir()
