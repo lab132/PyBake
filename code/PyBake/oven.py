@@ -6,6 +6,15 @@ from importlib import import_module
 from PyBake import *
 
 def pastry_to_json_file(out_file, name, version, ingredients, options):
+  import json
+  class BakersApprentice(json.JSONEncoder):
+    def default(self, obj):
+      if isinstance(obj, Platform):
+        return dict(obj)
+      if isinstance(obj, Ingredient):
+        return dict(obj)
+      return json.JSONEncoder.default(self, obj)
+
   # Create the pastry
   pastry = {}
   pastry["name"] = name
@@ -16,8 +25,8 @@ def pastry_to_json_file(out_file, name, version, ingredients, options):
   sort_keys = options.get("sort_keys", True) if options is not None else True
 
   # Write the JSON file (pastry.json by default).
-  with out_file.open("w") as outfile:
-    json.dump(pastry, outfile, indent=indent_output, sort_keys=sort_keys)
+  with out_file.open("w") as out:
+    json.dump(pastry, out, indent=indent_output, sort_keys=sort_keys, cls=BakersApprentice)
 
 def run(*,                                  # Keyword arguments only.
         pastry_name,                        # The name of the pastry.

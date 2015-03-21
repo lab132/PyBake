@@ -8,7 +8,6 @@ if __name__ == "__main__":
 import socket
 import importlib
 from urllib.request import urlopen
-import json
 import pathlib
 from copy import deepcopy
 from importlib import import_module
@@ -79,9 +78,8 @@ Platform.All = Platform(name="all")
 
 class Ingredient:
     """A wrapper for an existing file that has tags attached to it."""
-    def __init__(self, path, *, platform=Platform.All, tags=[]):
+    def __init__(self, path, *, tags={}):
         self.path = path
-        self.platform = platform
         self.tags = tags
 
     def __str__(self):
@@ -92,7 +90,6 @@ class Ingredient:
 
     def __iter__(self):
         yield ("path", self.path.as_posix(),)
-        yield ("platform", dict(self.platform),)
         yield ("tags", self.tags,)
 
     def make_relative_to(root):
