@@ -53,32 +53,30 @@ ezEnginePath_Lib.resolve()
 @recipe
 def get_header_files():
   print("Assemlbing 'header-file's")
-  tags = [ "header-file" ]
+  tags = {"header-file" : None}
   for filename in ezEnginePath_Headers.rglob("*.h"):
-    yield Ingredient(filename, tags=["header-file"])
+    yield Ingredient(filename, tags=tags)
 
 @recipe
 def get_runtime_files():
   print("Assemlbing 'rt-file's")
-  tags = [ "rt-file" ]
   path = ezEnginePath_Bin.glob("*")
   for subpath in path:
-    if not subpath.is_dir() or subpath.match("*Tests"):
+    if not subpath.is_dir() or subpath.match("*Test*"):
       continue
-    p = extract_platform(subpath)
+    tags = {"rt-file" : None, "platform" : extract_platform(subpath)}
 
     for filename in chain(subpath.rglob("ez*.dll"), subpath.rglob("ez*.pdb"), subpath.rglob("ez*.so")):
-      yield Ingredient(filename, platform=p, tags=tags)
+      yield Ingredient(filename, tags=tags)
 
 @recipe
 def get_compiletime_files():
   print("Assemlbing 'ct-file's")
-  tags = [ "ct-file" ]
   path = ezEnginePath_Lib.glob("*")
   for subpath in path:
-    if not subpath.is_dir() or subpath.match("*Tests"):
+    if not subpath.is_dir() or subpath.match("*Test*"):
       continue
-    p = extract_platform(subpath)
+    tags = {"ct-file" : None, "platform" : extract_platform(subpath)}
 
     for filename in subpath.rglob("ez*.lib"):
-      yield Ingredient(filename, platform=p, tags=tags)
+      yield Ingredient(filename, tags=tags)
