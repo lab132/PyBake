@@ -21,7 +21,7 @@ def pastry_to_json_file(out_file, name, version, ingredients, options):
   pastry["version"] = version
   pastry["ingredients"] = ingredients
 
-  indent_output = options.get("indent_output", True) if options is not None else True
+  indent_output = not (options.get("no_indent_output", False) if options is not None else False)
   sort_keys = options.get("sort_keys", True) if options is not None else True
 
   # Write the JSON file (pastry.json by default).
@@ -41,12 +41,12 @@ def run(*,                                  # Keyword arguments only.
 
   # Change into the working directory given by the user.
   with ChangeDir(working_dir):
-    print("Processing recipe '{0}'".format(recipe))
+    Log.log("Processing recipe '{0}'".format(recipe))
 
     # Load the recipe, which will register some handlers that yield ingredients.
     import_module(recipe)
     if len(recipes) == 0:
-      print("No recipes found. Make sure to create functions and decorate them with @recipe.")
+      Log.error("No recipes found. Make sure to create functions and decorate them with @recipe.")
       return
 
     # Collect all ingredients

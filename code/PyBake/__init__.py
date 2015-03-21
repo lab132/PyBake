@@ -11,6 +11,7 @@ from urllib.request import urlopen
 import pathlib
 from copy import deepcopy
 from importlib import import_module
+from PyBake.logging import *
 
 recipes = []
 def recipe(func):
@@ -111,8 +112,8 @@ class ChangeDir:
             self.current = Path(path).resolve()
             assert self.current.is_dir()
         except FileNotFoundError as ex:
-            print("Cannot change into directory:")
-            print(ex)
+            Log.error("Cannot change into directory:")
+            Log.error(ex)
             self.current = self.previous
 
     def __enter__(self):

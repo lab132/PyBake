@@ -13,6 +13,7 @@ sys.path.insert(0, os.getcwd())
 import argparse
 import textwrap
 from PyBake import Path
+from PyBake.logging import *
 
 ## Data for Argparser
 
@@ -47,7 +48,7 @@ serverDescription = textwrap.dedent(
     )
 
 def execute_server(args):
-    print(args)
+    Log.log(args)
     from flask import Flask, request, session, g, redirect, url_for, abort, \
     render_template, flash, jsonify
     # create our little application :)
@@ -66,30 +67,30 @@ def execute_server(args):
     @app.route("/list_packages")
     def listPackages():
         p = os.listdir(".")
-        print(p)
+        Log.log(p)
         return jsonify({"values" : p})
     import crumble
     app.run(debug=True, host=crumble.server.host, port=crumble.server.port)
 
 def execute_client(args):
     import crumble
-    print(args)
-    #print(args.config.read())
+    Log.log(args)
+    #Log.log(args.config.read())
     response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
-    print(response)
+    Log.log(response)
 
 def execute_oven(args):
-    print("Executing oven")
+    Log.log("Executing oven")
     from PyBake import oven
     oven.run(**vars(args))
-
 
 ## Main Parser
 ## ====
 mainParser = argparse.ArgumentParser(prog="PyBake",description=description)
 mainParser.add_argument("-V", "--Version", action="version", version="%(prog)s v{Release}.{Major}.{Minor}".format(**version))
+mainParser.add_argument("-q", "--quiet", default=False, action="store_true")
 mainParser.add_argument("-v", "--verbose", action="count", default=0,
-                        help="Set the verbosity of the output, more v's generates more verbose output (Up to 5).")
+                        help="Set the verbosity of the output, more v's generates more verbose output (Up to 5). Default is 3")
 
 ## Subparsers
 ## ====
@@ -113,8 +114,8 @@ ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.json")
                         help="The resulting JSON file relative to the working dir.")
 ovenParser.add_argument("-d", "--working-dir", type=Path, default=Path("."),
                         help="The working directory.")
-ovenParser.add_argument("--indent-output", type=bool, default=True,
-                        help="Whether to produce a more human-friendly, indented JSON file.")
+ovenParser.add_argument("--no-indent-output", action="store_true", default=False,
+                        help="Whether to produce a compressed NOT human-friendly, unindented JSON file.")
 ovenParser.set_defaults(func=execute_oven)
 
 ## ClientParser
@@ -138,6 +139,14 @@ serverParser.set_defaults(func=execute_server)
 ## Main
 ## ====
 
+Log.addLogSink(StdOutSink())
+
 args = mainParser.parse_args()
+
+# Set to Default (LogVerbosity.Log) if no -v is provided at all
+if args.verbose == 0:
+  args.verbose = int(LogVerbosity.Log)
+Log.verbosity = LogVerbosity(args.verbose)
+Log.quiet = args.quiet
 
 args.func(args)
