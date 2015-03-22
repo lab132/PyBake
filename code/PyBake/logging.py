@@ -79,7 +79,7 @@ class LogBackend:
         sink.log_message(**logInfo)
 
 # Create a global LogBackend
-Log = LogBackend()
+log = LogBackend()
 
 
 class StdOutSink:
@@ -96,15 +96,16 @@ class StdOutSink:
 
 
 
-class LogBlock:
+class logBlock:
 
-  def __init__(self, name):
+  def __init__(self, name, log=log):
     self.printed = False
     self.name = name
+    self.log = log
 
 
   def __enter__(self):
-    Log.addLogBlock(self)
+    self.log.addLogBlock(self)
 
   enter = __enter__
 
@@ -112,4 +113,4 @@ class LogBlock:
     self.exit()
 
   def exit(self):
-    Log.removeLogBlock(self)
+    self.log.removeLogBlock(self)

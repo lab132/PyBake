@@ -48,7 +48,7 @@ serverDescription = textwrap.dedent(
     )
 
 def execute_server(args):
-    Log.log(args)
+    log.log(args)
     from flask import Flask, request, session, g, redirect, url_for, abort, \
     render_template, flash, jsonify
     # create our little application :)
@@ -74,13 +74,13 @@ def execute_server(args):
 
 def execute_client(args):
     import crumble
-    Log.log(args)
+    log.log(args)
     #Log.log(args.config.read())
     response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
-    Log.log(response)
+    log.log(response)
 
 def execute_oven(args):
-    Log.log("Executing oven")
+    log.log("Executing oven")
     from PyBake import oven
     oven.run(**vars(args))
 
@@ -139,14 +139,14 @@ serverParser.set_defaults(func=execute_server)
 ## Main
 ## ====
 
-Log.addLogSink(StdOutSink())
+log.addLogSink(StdOutSink())
 
 args = mainParser.parse_args()
 
 # Set to Default (LogVerbosity.Log) if no -v is provided at all
 if args.verbose == 0:
   args.verbose = int(LogVerbosity.Log)
-Log.verbosity = LogVerbosity(args.verbose)
-Log.quiet = args.quiet
+log.verbosity = LogVerbosity(args.verbose)
+log.quiet = args.quiet
 
 args.func(args)

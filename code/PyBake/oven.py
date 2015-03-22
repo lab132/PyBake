@@ -36,18 +36,18 @@ def run(*,                                  # Keyword arguments only.
         output,                             # The target file specified by the user, e.g. a JSON file. Relative to the original working dir.
         baker_function=pastry_to_json_file, # The function that finally processes the ingredients and creates a pastry. Expected signature: func(out_file, name, version, list_of_ingredients, options)
         **kwargs):                          # kwargs passed as `options` to the `baker_function`.
-  with LogBlock("Oven"):
+  with logBlock("Oven"):
     # Make sure the working dir exists.
     working_dir = working_dir.resolve()
 
     # Change into the working directory given by the user.
     with ChangeDir(working_dir):
-      Log.log("Processing recipe '{0}'".format(recipe))
+      log.log("Processing recipe '{0}'".format(recipe))
 
       # Load the recipe, which will register some handlers that yield ingredients.
       import_module(recipe)
       if len(recipes) == 0:
-        Log.error("No recipes found. Make sure to create functions and decorate them with @recipe.")
+        log.error("No recipes found. Make sure to create functions and decorate them with @recipe.")
         return
 
       # Collect all ingredients
