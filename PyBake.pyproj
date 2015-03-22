@@ -45,6 +45,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="code\PyBake\oven.py" />
+    <Compile Include="code\PyBake\shop.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="code\PyBake\__init__.py" />
     <Compile Include="code\PyBake\__main__.py" />
   </ItemGroup>

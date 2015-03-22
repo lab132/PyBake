@@ -13,7 +13,7 @@ sys.path.insert(0, os.getcwd())
 import argparse
 import textwrap
 from PyBake import Path
-from PyBake.logging import *
+from PyBake.logging import StdOutSink, LogVerbosity, log
 
 ## Data for Argparser
 
@@ -47,35 +47,13 @@ serverDescription = textwrap.dedent(
     """
     )
 
-def execute_server(args):
+def execute_shop(args):
     log.debug(args)
-    from flask import Flask, request, session, g, redirect, url_for, abort, \
-    render_template, flash, jsonify
-    # create our little application :)
-    app = Flask(__name__)
-    # Load default config and override config from an environment variable
-
-    app.config.update(dict(
-        DATABASE=os.path.join(app.root_path, 'flaskr.db'),
-        DEBUG=True,
-        SECRET_KEY='development key',
-        USERNAME='admin',
-        PASSWORD='default'
-    ))
-    app.config.from_envvar('FLASKR_SETTINGS', silent=True)
-
-    @app.route("/list_packages")
-    def listPackages():
-        p = os.listdir(".")
-        Log.success(p)
-        return jsonify({"values" : p})
-    import crumble
-    app.run(debug=True, host=crumble.server.host, port=crumble.server.port)
+    from PyBake import shop
+    shop.run(**vars(args))
 
 def execute_client(args):
-    import crumble
     log.debug(args)
-    #Log.log(args.config.read())
     response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
     log.success(response)
 
@@ -130,11 +108,11 @@ clientParser.set_defaults(func=execute_client)
 ## ServerParser
 ## ====
 
-serverParser = subparsers.add_parser("server", help=serverDescription, description=serverDescription)
+shopParser = subparsers.add_parser("shop", help=serverDescription, description=serverDescription)
 
-serverParser.add_argument("-c" , "--config", type=argparse.FileType(mode="r", encoding="UTF-8"), default="serverconfig.py",
-                          help="Supply a custom config for the server (defaults to serverconfig.py")
-serverParser.set_defaults(func=execute_server)
+shopParser.add_argument("-c" , "--config", default="shop_config",
+                          help="Supply a custom config for the shop (defaults to shop_config")
+shopParser.set_defaults(func=execute_shop)
 
 ## Main
 ## ====
