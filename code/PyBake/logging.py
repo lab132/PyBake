@@ -4,6 +4,7 @@ Logging facility of our bakery
 
 import sys
 from enum import IntEnum, unique
+import textwrap
 
 @unique
 class LogVerbosity(IntEnum):
@@ -25,6 +26,7 @@ class LogBackend:
     self.sinks = sinks
     self.verbosity = verbosity
     self.quiet = quiet
+    self.blockStack = []
 
     # Auto generate helper methods like LogBackend.error("This is an error!") or LogBackend.warning() out of the LogVerbosity enum
     for name, value in LogVerbosity.__members__.items():
@@ -32,16 +34,49 @@ class LogBackend:
 
 
   def addLogSink(self, sink):
-    """Adds a log sink to the logger, a log sink needs a 'log_message(verbosity, message)' function."""
     self.sinks.append(sink)
 
   def removeLogSink(self, sink):
     self.sinks.remove(sink)
 
+  def addLogBlock(self, block):
+    self.blockStack.append(block)
+
+  def removeLogBlock(self, block):
+    if self.blockStack[-1] == block:
+      if block.printed == True: # Block was printed so we need to print out that we close this block now
+        blockInfo = {
+              "blockLevel" : len(self.blockStack)-1, # Decrement by one so the first LogBlock is at indentation 0
+              "name" : block.name,
+              "isOpening" : False
+              }
+        for sink in self.sinks:
+          sink.log_block(**blockInfo)
+      self.blockStack.pop()
+    else:
+      raise ValueError("The given block is not the last Element in the stack!")
+
   def log_message(self, verbosity, message):
     if not self.quiet and verbosity <= self.verbosity:
+      logInfo = {
+        "message" : message,
+        "verbosity" : verbosity,
+        "blockLevel" : len(self.blockStack)
+        }
+      for block in reversed(self.blockStack):
+        if block.printed == False:
+          block.printed = True
+          blockInfo = {
+              "blockLevel" : len(self.blockStack)-1, # Decrement by one so the first LogBlock is at indentation 0
+              "name" : block.name,
+              "isOpening" : True
+              }
+          for sink in self.sinks:
+            sink.log_block(**blockInfo)
+        else:
+          break #We reached the position in the stack where all messages are printed so stop
       for sink in self.sinks:
-        sink.log_message(verbosity, message)
+        sink.log_message(**logInfo)
 
 # Create a global LogBackend
 Log = LogBackend()
@@ -49,12 +84,14 @@ Log = LogBackend()
 
 class StdOutSink:
 
-  def log_message(self, verbosity, message):
+  def log_message(self, *, verbosity, message, blockLevel):
+    output = sys.stdout
     if verbosity <= LogVerbosity.Warning:
-      sys.stderr.write("{0}\n".format(message))
-    else:
-      sys.stdout.write("{0}\n".format(message))
+      output = sys.stderr
+    output.write("{0}{1}\n".format("  " * blockLevel, message))
 
+  def log_block(self, *, blockLevel, name, isOpening):
+    sys.stdout.write("{0} {1} {2}\n".format("  " * blockLevel, "+++" if isOpening else "---", name))
 
 
 
@@ -65,8 +102,14 @@ class LogBlock:
     self.printed = False
     self.name = name
 
+
   def __enter__(self):
     Log.addLogBlock(self)
 
+  enter = __enter__
+
   def __exit__(self, type, value, tb):
+    self.exit()
+
+  def exit(self):
     Log.removeLogBlock(self)
