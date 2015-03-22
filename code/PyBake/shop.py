@@ -26,7 +26,7 @@ class ShopDiskDriver:
 
   def saveCrumble(self, crumbleData, pastryJson):
     import base64
-    file_name_string = base64.urlsafe_b64encode("{name}_{version}".format(**crumble))
+    file_name_string = base64.urlsafe_b64encode(bytes("{name}_{version}".format(**crumbleData), "UTF-8"))
     crumbleDir = Path("crumbles/{0}".format(file_name_string))
     if not crumbleDir.exists():
       crumbleDir.mkdir(mode=0o700, parents=True)
@@ -77,7 +77,7 @@ def Shop(name=__name__):
   ))
   app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 
-  @app.route("/upload_crumble")
+  @app.route("/upload_crumble", methods=["POST"])
   def upload_crumble():
     fileName = "pastry.json"
 
@@ -86,7 +86,7 @@ def Shop(name=__name__):
         "name" : request.form["crumbleName"],
         "version" : request.form["crumbleVersion"]
         }
-      shopBackend.saveCrumble(crumbleData, request.files[fileName])
+      shopBackend.saveCrumble(crumbleData, request.files[fileName].read().decode("UTF-8"))
 
 
   @app.route("/get_crumble", methods=["POST"])
