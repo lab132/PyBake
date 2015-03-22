@@ -13,7 +13,7 @@ sys.path.insert(0, os.getcwd())
 import argparse
 import textwrap
 from PyBake import Path
-from PyBake.logging import StdOutSink, LogVerbosity, log
+from PyBake.logger import StdOutSink, LogVerbosity, log
 
 ## Data for Argparser
 

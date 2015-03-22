@@ -41,9 +41,7 @@
     <Content Include="code\PyBake\__pycache__\__main__.cpython-34.pyc" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="code\PyBake\logging.py">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="code\PyBake\logger.py" />
     <Compile Include="code\PyBake\oven.py" />
     <Compile Include="code\PyBake\shop.py">
       <SubType>Code</SubType>

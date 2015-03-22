@@ -11,7 +11,7 @@ from urllib.request import urlopen
 import pathlib
 from copy import deepcopy
 from importlib import import_module
-from PyBake.logging import log, LogBlock
+from PyBake.logger import log, LogBlock
 
 recipes = []
 def recipe(func):
