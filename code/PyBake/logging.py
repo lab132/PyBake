@@ -46,6 +46,9 @@ class LogBackend:
 class StdOutSink:
 
   def log_message(self, verbosity, message):
-    print(message)
+    if verbosity <= LogVerbosity.Warning:
+      sys.stderr.write("{0}\n".format(message))
+    else:
+      sys.stdout.write("{0}\n".format(message))
 
 Log = LogBackend()
