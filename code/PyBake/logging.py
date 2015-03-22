@@ -13,7 +13,7 @@ class LogVerbosity(IntEnum):
   Verbose = 4
   Info = 5
 
-def create_log_message_functions(value):
+def create_log_message_function(value):
 
   def log_message(self, message):
     self.log_message(value, message)
