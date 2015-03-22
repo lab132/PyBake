@@ -91,19 +91,39 @@ def Shop(name=__name__):
     @app.route("/upload_crumble", methods=["POST"])
     def upload_crumble():
       with LogBlock("Upload"):
-        log.debug("Recevied upload request")
+        log.debug("Recieved upload request")
         log.debug(request.form)
         log.debug(request.files)
         fileName = "pastry.json"
 
-        if fileName in request.files and "crumbleName" in request.form and "crumbleVersion" in request.form:
+        returnCode = 200
+        errors = []
+        data = {
+          "result" : "Ok"
+          }
+
+        if fileName not in request.files:
+          errors.append("missing pastry.json")
+
+        if "crumbleName" not in request.form:
+          errors.append("missing crumbleName")
+
+
+        if "crumbleVersion" not in request.form:
+          errors.append("missing crumbleVersion")
+
+        if len(errors) == 0:
           crumbleData = {
             "name" : request.form["crumbleName"],
             "version" : request.form["crumbleVersion"]
             }
           shopBackend.saveCrumble(crumbleData, request.files[fileName].read().decode("UTF-8"))
+        else:
+          returnCode = 400
+          data["errors"] = errors
+          data["result"] = "Error"
 
-        return jsonify({"result":"Ok"})
+        return jsonify(data), returnCode
 
 
     @app.route("/get_crumble", methods=["POST"])
