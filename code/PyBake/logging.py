@@ -13,7 +13,7 @@ class LogVerbosity(IntEnum):
   Verbose = 4
   Info = 5
 
-def create_log_message(value):
+def create_log_message_functions(value):
 
   def log_message(self, message):
     self.log_message(value, message)
@@ -28,7 +28,7 @@ class LogBackend:
 
     # Auto generate helper methods like LogBackend.error("This is an error!") or LogBackend.warning() out of the LogVerbosity enum
     for name, value in LogVerbosity.__members__.items():
-     setattr(LogBackend, name.lower(),create_log_message(value))
+     setattr(LogBackend, name.lower(), create_log_message_function(value))
 
 
   def addLogSink(self, sink):
