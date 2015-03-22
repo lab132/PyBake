@@ -4,7 +4,6 @@ Logging facility of our bakery
 
 import sys
 from enum import IntEnum, unique
-import textwrap
 
 @unique
 class LogVerbosity(IntEnum):
@@ -13,12 +12,7 @@ class LogVerbosity(IntEnum):
   Log = 3
   Verbose = 4
   Info = 5
-
-def create_log_message_function(value):
-
-  def log_message(self, message):
-    self.log_message(value, message)
-  return log_message
+  All = 6
 
 class LogBackend:
 
@@ -28,9 +22,15 @@ class LogBackend:
     self.quiet = quiet
     self.blockStack = []
 
+    def create_log_message_function(value):
+      return lambda self, message: self.log_message(value, message)
+
     # Auto generate helper methods like LogBackend.error("This is an error!") or LogBackend.warning() out of the LogVerbosity enum
     for name, value in LogVerbosity.__members__.items():
      setattr(LogBackend, name.lower(), create_log_message_function(value))
+
+  def __call__(self, *args):
+    self.log(*args)
 
 
   def addLogSink(self, sink):
@@ -91,7 +91,7 @@ class StdOutSink:
     output.write("{0}{1}\n".format("  " * blockLevel, message))
 
   def log_block(self, *, blockLevel, name, isOpening):
-    sys.stdout.write("{0} {1} {2}\n".format("  " * blockLevel, "+++" if isOpening else "---", name))
+    sys.stdout.write("{0}{1} {2}\n".format("  " * blockLevel, "+++" if isOpening else "---", name))
 
 
 
