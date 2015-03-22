@@ -112,8 +112,8 @@ class ChangeDir:
             self.current = Path(path).resolve()
             assert self.current.is_dir()
         except FileNotFoundError as ex:
-            Log.error("Cannot change into directory:")
-            Log.error(ex)
+            log.error("Cannot change into directory:")
+            log.error(ex)
             self.current = self.previous
 
     def __enter__(self):
