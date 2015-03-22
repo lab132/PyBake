@@ -52,7 +52,7 @@ class LogBackend:
      setattr(LogBackend, name.lower(), create_log_message_function(value))
 
   def __call__(self, *args):
-    self.log(*args)
+    self.info(*args)
 
 
   def addLogSink(self, sink):

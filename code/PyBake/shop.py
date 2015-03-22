@@ -8,6 +8,7 @@ from flask import Flask, request, session, g, redirect, url_for, abort, \
 import json
 
 from PyBake import Path
+from PyBake.logger import log, LogBlock
 from importlib import import_module
 
 class ShopDiskDriver:
@@ -25,26 +26,34 @@ class ShopDiskDriver:
         self.menu = json.load(menuFile)
 
   def saveCrumble(self, crumbleData, pastryJson):
-    import base64
-    file_name_string = base64.urlsafe_b64encode(bytes("{name}_{version}".format(**crumbleData), "UTF-8"))
-    crumbleDir = Path("crumbles/{0}".format(file_name_string))
-    if not crumbleDir.exists():
-      crumbleDir.mkdir(mode=0o700, parents=True)
-    pastryPath = crumbleDir / "pastry.json"
+    with LogBlock("Shop Disk"):
+      import base64
+      file_name_string = base64.urlsafe_b64encode(bytes("{name}_{version}".format(**crumbleData), "UTF-8"))
+      crumbleDir = Path("crumbles/{0}".format(file_name_string))
+      log.info("Working on path {0}".format(crumbleDir.as_posix()))
+      if not crumbleDir.exists():
+        log.info("Path is missing.... creating")
+        crumbleDir.mkdir(mode=0o700, parents=True)
+      pastryPath = crumbleDir / "pastry.json"
 
-    with pastryPath.open("w") as pastryFile:
-      pastryFile.write(pastryJson)
+      with pastryPath.open("w") as pastryFile:
+        log.info("Writing pastry.json with {0} chars".format(len(pastryJson)))
+        pastryFile.write(pastryJson)
 
-    self.addToMenu(crumbleData)
+      self.addToMenu(crumbleData)
 
   def addToMenu(self, crumbleData):
-    versionSet = self.menu.get(crumbleData["name"], set())
-    versionSet.add(crumbleData["version"])
-    self.menu[crumbleData["name"]] = versionSet
-    self.syncMenu()
+    with LogBlock("Add To Menu"):
+      log.info("Adding {name} with version {version} to menu".format(**crumbleData))
+      versionSet = self.menu.get(crumbleData["name"], [])
+      if not crumbleData["version"] in versionSet:
+        versionSet.append(crumbleData["version"])
+      self.menu[crumbleData["name"]] = versionSet
+      self.syncMenu()
 
   def syncMenu(self):
     with self.menuPath.open("w") as menuFile:
+      log.info("Writing menu to disk")
       json.dump(self.menu, menuFile, indent=True, sort_keys=True)
 
 
@@ -57,43 +66,51 @@ class ShopBackend:
     self.driver = driver
 
   def saveCrumble(self, crumbleData, pastryFile):
-    self.driver.saveCrumble(crumbleData, pastryFile)
+    with LogBlock("Backend Crumble Save"):
+      log.debug("Saving crumble with pastryFile of length {0}".format(len(pastryFile)))
+      self.driver.saveCrumble(crumbleData, pastryFile)
 
 shopBackend = ShopBackend()
 
 
 def Shop(name=__name__):
+  with LogBlock("Shop"):
+    # create our little application :)
+    app = Flask(name)
 
-  # create our little application :)
-  app = Flask(name)
+    # Load default config and override config from an environment variable
+    app.config.update(dict(
+        DATABASE=(Path(app.root_path) / 'flaskr.db').as_posix(),
+        DEBUG=True,
+        SECRET_KEY='development key',
+        USERNAME='admin',
+        PASSWORD='default'
+    ))
+    app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 
-  # Load default config and override config from an environment variable
-  app.config.update(dict(
-      DATABASE=(Path(app.root_path) / 'flaskr.db').as_posix(),
-      DEBUG=True,
-      SECRET_KEY='development key',
-      USERNAME='admin',
-      PASSWORD='default'
-  ))
-  app.config.from_envvar('FLASKR_SETTINGS', silent=True)
+    @app.route("/upload_crumble", methods=["POST"])
+    def upload_crumble():
+      with LogBlock("Upload"):
+        log.debug("Recevied upload request")
+        log.debug(request.form)
+        log.debug(request.files)
+        fileName = "pastry.json"
 
-  @app.route("/upload_crumble", methods=["POST"])
-  def upload_crumble():
-    fileName = "pastry.json"
+        if fileName in request.files and "crumbleName" in request.form and "crumbleVersion" in request.form:
+          crumbleData = {
+            "name" : request.form["crumbleName"],
+            "version" : request.form["crumbleVersion"]
+            }
+          shopBackend.saveCrumble(crumbleData, request.files[fileName].read().decode("UTF-8"))
 
-    if fileName in request.files and "crumbleName" in request.form and "crumbleVersion" in request.form:
-      crumbleData = {
-        "name" : request.form["crumbleName"],
-        "version" : request.form["crumbleVersion"]
-        }
-      shopBackend.saveCrumble(crumbleData, request.files[fileName].read().decode("UTF-8"))
+        return jsonify({"result":"Ok"})
 
 
-  @app.route("/get_crumble", methods=["POST"])
-  def get_crumble():
-    pass
+    @app.route("/get_crumble", methods=["POST"])
+    def get_crumble():
+      pass
 
-  return app
+    return app
 
 
 def run(*, config, **kwargs):
