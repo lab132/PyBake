@@ -7,16 +7,30 @@ from enum import IntEnum, unique
 
 @unique
 class LogVerbosity(IntEnum):
-  Error = 1
-  Warning = 2
-  Log = 3
-  Verbose = 4
-  Info = 5
-  All = 6
+  Error          = 1, # Print only error Messages and messages that marked as 'All'
+  SeriousWarning = 2, # Print Seriouse warnings and above
+  Warning        = 3, # Print Warnings and above
+  Success        = 4, # Print Success and above.
+  Info           = 5, # Print Info and above
+  Dev            = 6, # Print development messages and above
+  Debug          = 7, # Print debug messages and above
+  All            = 8  # Print ALL Messages
+
+@unique
+class LogLevel(IntEnum):
+  All            = 0, # Log this one always
+  Error          = 1, # An error message.
+  SeriousWarning = 2, # A serious warning message.
+  Warning        = 3, # A warning message.
+  Success        = 4, # A success message.
+  Info           = 5, # An info message.
+  Dev            = 6, # A development message.
+  Debug          = 7, # A debug message.
+
 
 class LogBackend:
 
-  def __init__(self, *, sinks=[], verbosity=LogVerbosity.Log, quiet=False):
+  def __init__(self, *, sinks=[], verbosity=LogVerbosity.Success, quiet=False):
     self.sinks = sinks
     self.verbosity = verbosity
     self.quiet = quiet
@@ -26,7 +40,7 @@ class LogBackend:
       return lambda self, message: self.log_message(value, message)
 
     # Auto generate helper methods like LogBackend.error("This is an error!") or LogBackend.warning() out of the LogVerbosity enum
-    for name, value in LogVerbosity.__members__.items():
+    for name, value in LogLevel.__members__.items():
      setattr(LogBackend, name.lower(), create_log_message_function(value))
 
   def __call__(self, *args):
@@ -96,7 +110,7 @@ class StdOutSink:
 
 
 
-class logBlock:
+class LogBlock:
 
   def __init__(self, name, log=log):
     self.printed = False

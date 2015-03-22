@@ -48,7 +48,7 @@ serverDescription = textwrap.dedent(
     )
 
 def execute_server(args):
-    log.log(args)
+    log.debug(args)
     from flask import Flask, request, session, g, redirect, url_for, abort, \
     render_template, flash, jsonify
     # create our little application :)
@@ -67,20 +67,20 @@ def execute_server(args):
     @app.route("/list_packages")
     def listPackages():
         p = os.listdir(".")
-        Log.log(p)
+        Log.success(p)
         return jsonify({"values" : p})
     import crumble
     app.run(debug=True, host=crumble.server.host, port=crumble.server.port)
 
 def execute_client(args):
     import crumble
-    log.log(args)
+    log.debug(args)
     #Log.log(args.config.read())
     response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
-    log.log(response)
+    log.success(response)
 
 def execute_oven(args):
-    log.log("Executing oven")
+    log.info("Executing oven")
     from PyBake import oven
     oven.run(**vars(args))
 
@@ -90,7 +90,7 @@ mainParser = argparse.ArgumentParser(prog="PyBake",description=description)
 mainParser.add_argument("-V", "--Version", action="version", version="%(prog)s v{Release}.{Major}.{Minor}".format(**version))
 mainParser.add_argument("-q", "--quiet", default=False, action="store_true")
 mainParser.add_argument("-v", "--verbose", action="count", default=0,
-                        help="Set the verbosity of the output, more v's generates more verbose output (Up to 5). Default is 3")
+                        help="Set the verbosity of the output, more v's generates more verbose output (Up to 8). Default is {0}".format(int(LogVerbosity.Success)))
 
 ## Subparsers
 ## ====
@@ -145,7 +145,7 @@ args = mainParser.parse_args()
 
 # Set to Default (LogVerbosity.Log) if no -v is provided at all
 if args.verbose == 0:
-  args.verbose = int(LogVerbosity.Log)
+  args.verbose = int(LogVerbosity.Success)
 log.verbosity = LogVerbosity(args.verbose)
 log.quiet = args.quiet
 
