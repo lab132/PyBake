@@ -25,7 +25,7 @@ class ShopDiskDriver:
       with self.menuPath.open("r") as menuFile:
         self.menu = json.load(menuFile)
 
-  def saveCrumble(self, crumbleData, pastryJson):
+  def createCrumble(self, crumbleData, pastryJson):
     with LogBlock("Shop Disk"):
       import base64
       file_name_string = base64.urlsafe_b64encode(bytes("{name}_{version}".format(**crumbleData), "UTF-8"))
@@ -65,10 +65,12 @@ class ShopBackend:
   def __init__(self, driver=ShopDiskDriver()):
     self.driver = driver
 
-  def saveCrumble(self, crumbleData, pastryFile):
+  def saveCrumble(self, crumbleData, files):
     with LogBlock("Backend Crumble Save"):
       log.debug("Saving crumble with pastryFile of length {0}".format(len(pastryFile)))
-      self.driver.saveCrumble(crumbleData, pastryFile)
+      pastryFile = files["pastry.json"].read().decode("UTF-8")
+      pastryObject = json.loads(pastryFile)
+      self.driver.createCrumble(crumbleData, pastryFile)
 
 shopBackend = ShopBackend()
 
@@ -117,8 +119,9 @@ def Shop(name=__name__):
             "name" : request.form["crumbleName"],
             "version" : request.form["crumbleVersion"]
             }
-          shopBackend.saveCrumble(crumbleData, request.files[fileName].read().decode("UTF-8"))
-        else:
+          errors = shopBackend.saveCrumble(crumbleData, request.files)
+
+        if len(errors) == 0:
           returnCode = 400
           data["errors"] = errors
           data["result"] = "Error"
