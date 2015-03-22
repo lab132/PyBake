@@ -143,7 +143,7 @@ log.addLogSink(StdOutSink())
 
 args = mainParser.parse_args()
 
-# Set to Default (LogVerbosity.Log) if no -v is provided at all
+# Set to Default if no -v is provided at all
 if args.verbose == 0:
   args.verbose = int(LogVerbosity.Success)
 log.verbosity = LogVerbosity(args.verbose)

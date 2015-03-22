@@ -29,6 +29,14 @@ class LogLevel(IntEnum):
 
 
 class LogBackend:
+  """
+  Main class for logging purposes.
+  Features the enum names from LogLevel as lowercase functions for logging e.g.
+  log.error(...)
+  log.seriouswarning(...)
+
+  where log is an object of this class
+  """
 
   def __init__(self, *, sinks=[], verbosity=LogVerbosity.Success, quiet=False):
     self.sinks = sinks
