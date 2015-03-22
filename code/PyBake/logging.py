@@ -43,6 +43,10 @@ class LogBackend:
       for sink in self.sinks:
         sink.log_message(verbosity, message)
 
+# Create a global LogBackend
+Log = LogBackend()
+
+
 class StdOutSink:
 
   def log_message(self, verbosity, message):
@@ -51,4 +55,18 @@ class StdOutSink:
     else:
       sys.stdout.write("{0}\n".format(message))
 
-Log = LogBackend()
+
+
+
+
+class LogBlock:
+
+  def __init__(self, name):
+    self.printed = False
+    self.name = name
+
+  def __enter__(self):
+    Log.addLogBlock(self)
+
+  def __exit__(self, type, value, tb):
+    Log.removeLogBlock(self)
