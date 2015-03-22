@@ -21,7 +21,7 @@ def pastry_to_json_file(out_file, name, version, ingredients, options):
   pastry["version"] = version
   pastry["ingredients"] = ingredients
 
-  indent_output = options.get("indent_output", True) if options is not None else True
+  indent_output = not (options.get("no_indent_output", False) if options is not None else False)
   sort_keys = options.get("sort_keys", True) if options is not None else True
 
   # Write the JSON file (pastry.json by default).
@@ -36,23 +36,24 @@ def run(*,                                  # Keyword arguments only.
         output,                             # The target file specified by the user, e.g. a JSON file. Relative to the original working dir.
         baker_function=pastry_to_json_file, # The function that finally processes the ingredients and creates a pastry. Expected signature: func(out_file, name, version, list_of_ingredients, options)
         **kwargs):                          # kwargs passed as `options` to the `baker_function`.
-  # Make sure the working dir exists.
-  working_dir = working_dir.resolve()
+  with LogBlock("Oven"):
+    # Make sure the working dir exists.
+    working_dir = working_dir.resolve()
 
-  # Change into the working directory given by the user.
-  with ChangeDir(working_dir):
-    print("Processing recipe '{0}'".format(recipe))
+    # Change into the working directory given by the user.
+    with ChangeDir(working_dir):
+      log.info("Processing recipe '{0}'".format(recipe))
 
-    # Load the recipe, which will register some handlers that yield ingredients.
-    import_module(recipe)
-    if len(recipes) == 0:
-      print("No recipes found. Make sure to create functions and decorate them with @recipe.")
-      return
+      # Load the recipe, which will register some handlers that yield ingredients.
+      import_module(recipe)
+      if len(recipes) == 0:
+        log.error("No recipes found. Make sure to create functions and decorate them with @recipe.")
+        return
 
-    # Collect all ingredients
-    ingredients = []
-    for rcp in recipes:
-      ingredients.extend(dict(ing) for ing in rcp())
+      # Collect all ingredients
+      ingredients = []
+      for rcp in recipes:
+        ingredients.extend(dict(ing) for ing in rcp())
 
-  # Note: Do not call the pastry_writer from within the ChangeDir block above!
-  baker_function(output, pastry_name, pastry_version, ingredients, kwargs)
+    # Note: Do not call the pastry_writer from within the ChangeDir block above!
+    baker_function(output, pastry_name, pastry_version, ingredients, kwargs)
