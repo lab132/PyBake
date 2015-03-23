@@ -12,8 +12,8 @@ sys.path.insert(0, os.getcwd())
 
 import argparse
 import textwrap
-from PyBake import Path
-from PyBake.logger import StdOutSink, LogVerbosity, log
+from PyBake import Path, version
+from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock
 
 ## Data for Argparser
 
@@ -41,6 +41,12 @@ clientDescription = textwrap.dedent(
     """
     )
 
+depotDescription = textwrap.dedent(
+  """
+  Uploads crumbles to the server given a pastry info file.
+  """
+  )
+
 serverDescription = textwrap.dedent(
     """
     Sets up a server for crumble management
@@ -61,6 +67,13 @@ def execute_oven(args):
     log.info("Executing oven")
     from PyBake import oven
     oven.run(**vars(args))
+
+def execute_depot(args):
+  with LogBlock("Depot"):
+    log.debug(args)
+    from PyBake import depot
+    depot.run(**vars(args))
+
 
 ## Main Parser
 ## ====
@@ -96,13 +109,28 @@ ovenParser.add_argument("--no-indent-output", action="store_true", default=False
                         help="Whether to produce a compressed NOT human-friendly, unindented JSON file.")
 ovenParser.set_defaults(func=execute_oven)
 
+## DepotParser
+## =============
+
+depotParser = subparsers.add_parser("depot", help=depotDescription, description=depotDescription)
+
+depotParser.add_argument("pastry_path",
+                         type=Path,
+                         default=Path("pastry.json"),
+                         help="Path to the pastry file (defaults to \"./pastry.json\").")
+
+depotParser.add_argument("-c" , "--config",
+                         default="config",
+                         help="Name of the python module containing configuration data. This file must exist in the working directory. (defaults to \"config\").")
+depotParser.set_defaults(func=execute_depot)
+
 ## ClientParser
 ## ====
 
 clientParser = subparsers.add_parser("client", help=clientDescription, description=clientDescription)
 
-clientParser.add_argument("-c" , "--config", type=argparse.FileType(mode="r", encoding="UTF-8"), default="config.py",
-                          help="Supply a custom config for the client (defaults to config.py)")
+clientParser.add_argument("-c" , "--config", default="config",
+                          help="Supply a custom config for the client (defaults to config)")
 clientParser.set_defaults(func=execute_client)
 
 ## ServerParser
