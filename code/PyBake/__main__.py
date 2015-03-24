@@ -17,11 +17,6 @@ from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock
 
 ## Data for Argparser
 
-version ={
-    "Release" : 0,
-    "Major" : 0,
-    "Minor" : 1,
-}
 description = textwrap.dedent(
     """
     Dependency Management Tool for any kind of dependencies.

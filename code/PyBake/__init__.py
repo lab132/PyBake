@@ -13,6 +13,12 @@ from copy import deepcopy
 from importlib import import_module
 from PyBake.logger import log, LogBlock
 
+version ={
+    "Release" : 0,
+    "Major" : 0,
+    "Minor" : 1,
+}
+
 recipes = []
 def recipe(func):
     recipes.append(func)
