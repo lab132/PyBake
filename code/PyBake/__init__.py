@@ -90,7 +90,7 @@ class Ingredient:
         self.tags = tags
 
     def __str__(self):
-        return "{0.path.name} for {0.platform}".format(self)
+        return "{0.path.name}".format(self)
 
     def __repr__(self):
         return "Ingredient({}{}{})".format(repr(self.path), repr(self.platform), repr(self.tags))
