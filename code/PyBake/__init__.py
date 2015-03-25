@@ -93,7 +93,7 @@ class Ingredient:
         return "{0.path.name}".format(self)
 
     def __repr__(self):
-        return "Ingredient({}{}{})".format(repr(self.path), repr(self.platform), repr(self.tags))
+        return "Ingredient({}{})".format(repr(self.path), repr(self.tags))
 
     def __iter__(self):
         yield ("path", self.path.as_posix(),)

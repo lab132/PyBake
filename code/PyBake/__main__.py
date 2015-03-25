@@ -95,11 +95,11 @@ ovenParser.add_argument("pastry_version",
                         type=str,
                         help="The version of the crumble.")
 ovenParser.add_argument("-r", "--recipe", type=str, default="recipe",
-                        help="Name of the recipe module. This module is expected to live directly in the working directory, not sub-directory, with the name `<recipe>.py`.")
-ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.json"),
-                        help="The resulting JSON file relative to the working dir.")
+                        help="Name of the recipe module. This module is expected to live directly in the working directory, not any sub-directory, with the name `<RECIPE>.py`.")
+ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.zip"),
+                        help="The resulting JSON file relative to the original working dir. Ignored --working-dir")
 ovenParser.add_argument("-d", "--working-dir", type=Path, default=Path("."),
-                        help="The working directory.")
+                        help="The working directory when executing the RECIPE.")
 ovenParser.add_argument("--no-indent-output", action="store_true", default=False,
                         help="Whether to produce a compressed NOT human-friendly, unindented JSON file.")
 ovenParser.set_defaults(func=execute_oven)
