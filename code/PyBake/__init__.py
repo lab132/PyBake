@@ -12,7 +12,7 @@ from PyBake.logger import log, LogBlock
 if __name__ == "__main__":
   raise RuntimeError("__init__.py is not supposed to be executed!")
 
-version ={
+version = {
   "Release" : 0,
   "Major" : 0,
   "Minor" : 1,
@@ -104,7 +104,7 @@ class Ingredient:
 
   def make_relative_to(self, root):
     if self.path.is_absolute():
-        self.path = self.path.relative_to(root)
+      self.path = self.path.relative_to(root)
 
 import json
 class PastryJSONEncoder(json.JSONEncoder):
