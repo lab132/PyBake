@@ -112,6 +112,7 @@ depotParser = subparsers.add_parser("depot", help=depotDescription, description=
 depotParser.add_argument("pastry_path",
                          type=Path,
                          default=Path("pastry.json"),
+                         nargs="?",
                          help="Path to the pastry file (defaults to \"./pastry.json\").")
 
 depotParser.add_argument("-c" , "--config",
