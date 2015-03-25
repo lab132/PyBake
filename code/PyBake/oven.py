@@ -17,6 +17,7 @@ class JSONBaker:
     self.options = options or {}
     self.ingredients = []
 
+
   def process(self, ingredient):
     self.ingredients.append(ingredient)
 
@@ -31,7 +32,7 @@ class JSONBaker:
     sort_keys = self.options.get("sort_keys", True)
 
     with self.filepath.open("w") as output:
-      json.dump(pastry, output, indent=indent_output, sort_keys=sort_keys, cls=PastryEncoder)
+      json.dump(pastry, output, indent=indent_output, sort_keys=sort_keys, cls=PastryJSONEncoder)
 
 class ZipBaker:
   # Suffix for the filepath while writing to it. Will be removed once all operations complete (transaction style).
@@ -70,17 +71,17 @@ class ZipBaker:
     pastry = {}
     pastry["name"] = self.pastry_name
     pastry["version"] = self.pastry_version
-    pastryJSON = json.dumps(pastry, indent=2, sort_keys=True, cls=PastryEncoder)
+    pastryJSON = json.dumps(pastry, indent=2, sort_keys=True, cls=PastryJSONEncoder)
     self.zip.writestr("pastry.json", bytes(pastryJSON, "UTF-8"))
 
     # Write ingredients.json.
-    ingredientsJSON = json.dumps(self.ingredients, indent=2, sort_keys=True, cls=PastryEncoder)
+    ingredientsJSON = json.dumps(self.ingredients, indent=2, sort_keys=True, cls=PastryJSONEncoder)
     self.zip.writestr("ingredients.json", bytes(ingredientsJSON, "UTF-8"))
 
     # Close the zip file
     self.zip.close()
 
-    log.debug("Replacing {0}{{{1.name} => {1.stem}}}".format(self.filepath.parent.as_posix(), self.filepath))
+    log.debug("Replacing {0}/{{ {1.name} => {1.stem} }}".format(self.filepath.parent.as_posix(), self.filepath))
     self.filepath.replace(Path(self.filepath.stem))
 
 

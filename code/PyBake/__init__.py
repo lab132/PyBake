@@ -2,8 +2,6 @@
 Baking py since 2015
 '''
 
-if __name__ == "__main__":
-    raise RuntimeError("__init__.py is not supposed to be executed!")
 
 import socket
 import importlib
@@ -13,6 +11,8 @@ from copy import deepcopy
 from importlib import import_module
 from PyBake.logger import log, LogBlock
 
+if __name__ == "__main__":
+    raise RuntimeError("__init__.py is not supposed to be executed!")
 version ={
     "Release" : 0,
     "Major" : 0,
@@ -20,9 +20,12 @@ version ={
 }
 
 recipes = []
+
+
 def recipe(func):
     recipes.append(func)
     return func
+
 
 class ServerConfig:
     """docstring"""
@@ -36,6 +39,7 @@ class ServerConfig:
 
     def __repr__(self):
         return "ServerConfig({})".format(self)
+
 
 class Platform:
     """Object describing a platform such as 'Windows 64 bit VisualStudio2013 Debug'."""
@@ -68,20 +72,21 @@ class Platform:
         yield ("user_data", str(self.user_data),)
 
     # Represents all platforms.
-    All = None # Is initialized after the declaration of this class
+    All = None  # Is initialized after the declaration of this class
 
     @staticmethod
     def FromDict(desc):
         result = Platform()
-        result.name          = desc.get("name", result.name)
+        result.name = desc.get("name", result.name)
         result.detailed_name = desc.get("detailed_name", result.detailed_name)
-        result.bits          = desc.get("bits", result.bits)
-        result.generator     = desc.get("generator", result.generator)
-        result.config        = desc.get("config", result.config)
-        result.user_data     = desc.get("user_data", result.user_data)
+        result.bits = desc.get("bits", result.bits)
+        result.generator = desc.get("generator", result.generator)
+        result.config = desc.get("config", result.config)
+        result.user_data = desc.get("user_data", result.user_data)
         return result
 
 Platform.All = Platform(name="all")
+
 
 class Ingredient:
     """A wrapper for an existing file that has tags attached to it."""
@@ -113,6 +118,7 @@ class PastryJSONEncoder(json.JSONEncoder):
     return json.JSONEncoder.default(self, obj)
 
 Path = pathlib.Path
+
 
 class ChangeDir:
     """
