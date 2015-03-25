@@ -73,7 +73,8 @@ def execute_depot(args):
 ## Main Parser
 ## ====
 mainParser = argparse.ArgumentParser(prog="PyBake", description=description)
-mainParser.add_argument("-V", "--Version", action="version", version="%(prog)s v{Release}.{Major}.{Minor}".format(**version))
+mainParser.add_argument("-V", "--Version", action="version",
+                        version="%(prog)s v{Release}.{Major}.{Minor}".format(**version))
 mainParser.add_argument("-q", "--quiet", default=False, action="store_true")
 mainParser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Set the verbosity of the output, "
@@ -97,7 +98,9 @@ ovenParser.add_argument("pastry_version",
                         type=str,
                         help="The version of the crumble.")
 ovenParser.add_argument("-r", "--recipe", type=str, default="recipe",
-                        help="Name of the recipe module. This module is expected to live directly in the working directory, not any sub-directory, with the name `<RECIPE>.py`.")
+                        help="Name of the recipe module. "
+                        "This module is expected to live directly in the working directory, "
+                        "not any sub-directory, with the name `<RECIPE>.py`.")
 ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.zip"),
                         help="The resulting JSON file relative to the original working dir. Ignored --working-dir")
 ovenParser.add_argument("-d", "--working-dir", type=Path, default=Path("."),
@@ -106,8 +109,8 @@ ovenParser.add_argument("--no-indent-output", action="store_true", default=False
                         help="Whether to produce a compressed NOT human-friendly, unindented JSON file.")
 ovenParser.set_defaults(func=execute_oven)
 
-## DepotParser
-## =============
+# DepotParser
+# =============
 
 depotParser = subparsers.add_parser("depot", help=depotDescription, description=depotDescription)
 
@@ -117,11 +120,14 @@ depotParser.add_argument("pastry_path",
                          default=Path("pastry.zip"),
                          help="Path to the pastry file (defaults to \"./pastry.zip\").")
 
-depotParser.add_argument("-c", "--config",
+depotParser.add_argument("-c" , "--config",
                          default="config",
-                         help="Name of the python module containing configuration data. This file must exist in the working directory. (defaults to \"config\").")
+                         help="Name of the python module containing configuration data. "
+                         "This file must exist in the working directory. (defaults to \"config\").")
 depotParser.set_defaults(func=execute_depot)
 
+# ClientParser
+# ============
 
 clientParser = subparsers.add_parser("client", help=clientDescription, description=clientDescription)
 

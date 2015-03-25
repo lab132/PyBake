@@ -7,7 +7,6 @@ from PyBake import *
 import json
 import zipfile
 
-
 class JSONBaker:
   """Simply serializes all ingredients as JSON to the given file."""
   def __init__(self, filepath, pastry_name, pastry_version, options):
@@ -17,6 +16,7 @@ class JSONBaker:
     self.pastry_version = pastry_version
     self.options = options or {}
     self.ingredients = []
+
 
   def process(self, ingredient):
     self.ingredients.append(ingredient)
@@ -81,7 +81,7 @@ class ZipBaker:
     # Close the zip file
     self.zip.close()
 
-    log.debug("Replacing {0}{{{1.name} => {1.stem}}}".format(self.filepath.parent.as_posix(), self.filepath))
+    log.debug("Replacing {0}/{{ {1.name} => {1.stem} }}".format(self.filepath.parent.as_posix(), self.filepath))
     self.filepath.replace(Path(self.filepath.stem))
 
 

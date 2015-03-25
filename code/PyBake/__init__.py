@@ -1,8 +1,6 @@
 '''
 Baking py since 2015
 '''
-
-
 import socket
 import importlib
 from urllib.request import urlopen
@@ -11,16 +9,16 @@ from copy import deepcopy
 from importlib import import_module
 from PyBake.logger import log, LogBlock
 
+if __name__ == "__main__":
+  raise RuntimeError("__init__.py is not supposed to be executed!")
+
 version ={
   "Release" : 0,
   "Major" : 0,
   "Minor" : 1,
 }
-if __name__ == "__main__":
-  raise RuntimeError("__init__.py is not supposed to be executed!")
 
 recipes = []
-
 
 def recipe(func):
   recipes.append(func)
@@ -94,11 +92,11 @@ class Ingredient:
     self.path = path
     self.tags = tags
 
-    def __str__(self):
-      return "{0.path.name}".format(self)
+  def __str__(self):
+    return "{0.path.name}".format(self)
 
-    def __repr__(self):
-      return "Ingredient({}{})".format(repr(self.path), repr(self.tags))
+  def __repr__(self):
+    return "Ingredient({}{})".format(repr(self.path), repr(self.tags))
 
   def __iter__(self):
     yield ("path", self.path.as_posix(),)
@@ -106,7 +104,7 @@ class Ingredient:
 
   def make_relative_to(self, root):
     if self.path.is_absolute():
-      self.path = self.path.relative_to(root)
+        self.path = self.path.relative_to(root)
 
 import json
 class PastryJSONEncoder(json.JSONEncoder):

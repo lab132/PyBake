@@ -120,13 +120,13 @@ class StdOutSink:
 
 class LogBlock:
 
-  def __init__(self, name, log=log):
+  def __init__(self, name, backend=log):
     self.printed = False
     self.name = name
-    self.log = log
+    self.backend = log
 
   def __enter__(self):
-    self.log.addLogBlock(self)
+    self.backend.addLogBlock(self)
 
   enter = __enter__
 
@@ -134,4 +134,4 @@ class LogBlock:
     self.exit()
 
   def exit(self):
-    self.log.removeLogBlock(self)
+    self.backend.removeLogBlock(self)
