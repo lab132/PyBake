@@ -111,6 +111,7 @@ depotParser = subparsers.add_parser("depot", help=depotDescription, description=
 
 depotParser.add_argument("pastry_path",
                          type=Path,
+                         nargs="?",
                          default=Path("pastry.zip"),
                          help="Path to the pastry file (defaults to \"./pastry.zip\").")
 
