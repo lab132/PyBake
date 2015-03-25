@@ -103,6 +103,15 @@ class Ingredient:
         if self.path.is_absolute():
             self.path = self.path.relative_to(root)
 
+import json
+class PastryJSONEncoder(json.JSONEncoder):
+  def default(self, obj):
+    if isinstance(obj, Platform):
+      return dict(obj)
+    if isinstance(obj, Ingredient):
+      return dict(obj)
+    return json.JSONEncoder.default(self, obj)
+
 Path = pathlib.Path
 
 class ChangeDir:
