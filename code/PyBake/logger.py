@@ -69,8 +69,7 @@ class LogBackend:
   def removeLogBlock(self, block):
     if self.blockStack[-1] == block:
       if block.printed is True:  # Block was printed so we need to print out that we close this block now
-        blockInfo =
-        {
+        blockInfo = {
           "blockLevel": len(self.blockStack) - 1,  # Decrement by one so the first LogBlock is at indentation 0
           "name": block.name,
           "isOpening": False
@@ -83,8 +82,7 @@ class LogBackend:
 
   def log_message(self, verbosity, message):
     if not self.quiet and verbosity <= self.verbosity:
-      logInfo =
-      {
+      logInfo = {
         "message": message,
         "verbosity": verbosity,
         "blockLevel": len(self.blockStack)

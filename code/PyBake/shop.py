@@ -97,8 +97,7 @@ def Shop(name=__name__):
 
         returnCode = 200
         errors = []
-        data =
-        {
+        data = {
           "result": "Ok"
         }
 
@@ -112,8 +111,7 @@ def Shop(name=__name__):
           errors.append("missing crumbleVersion")
 
         if len(errors) == 0:
-          crumbleData =
-          {
+          crumbleData = {
             "name": request.form["crumbleName"],
             "version": request.form["crumbleVersion"]
           }
