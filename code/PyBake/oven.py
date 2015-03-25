@@ -61,7 +61,7 @@ class ZipBaker:
     self.filepath = filepath.resolve()
 
     # Open the zip file for writing.
-    self.zip = zipfile.ZipFile(self.filepath.as_posix(), "w", compression=zipfile.ZIP_STORED)
+    self.zip = zipfile.ZipFile(self.filepath.as_posix(), "w", compression=zipfile.ZIP_DEFLATED)
     self.pastry_name = pastry_name
     self.pastry_version = pastry_version
     self.options = options or {}
