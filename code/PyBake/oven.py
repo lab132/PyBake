@@ -5,8 +5,10 @@ Generate a list of tagged files that will be combined to a crumble.
 from importlib import import_module
 from PyBake import *
 
+
 def pastry_to_json_file(out_file, name, version, ingredients, options):
   import json
+
   class BakersApprentice(json.JSONEncoder):
     def default(self, obj):
       if isinstance(obj, Platform):
@@ -28,13 +30,17 @@ def pastry_to_json_file(out_file, name, version, ingredients, options):
   with out_file.open("w") as out:
     json.dump(pastry, out, indent=indent_output, sort_keys=sort_keys, cls=BakersApprentice)
 
-def run(*,                                  # Keyword arguments only.
-        pastry_name,                        # The name of the pastry.
-        pastry_version,                     # The version-string of the pastry.
-        working_dir,                        # Working directory in which to look for and execute the `recipe`
-        recipe,                             # The recipe to load, which provides ingredients.
-        output,                             # The target file specified by the user, e.g. a JSON file. Relative to the original working dir.
-        baker_function=pastry_to_json_file, # The function that finally processes the ingredients and creates a pastry. Expected signature: func(out_file, name, version, list_of_ingredients, options)
+
+def run(*,                                   # Keyword arguments only.
+        pastry_name,                         # The name of the pastry.
+        pastry_version,                      # The version-string of the pastry.
+        working_dir,                         # Working directory in which to look for and execute the `recipe`
+        recipe,                              # The recipe to load, which provides ingredients.
+        output,                              # The target file specified by the user, e.g. a JSON file.
+                                             # Relative to the original working dir.
+        baker_function=pastry_to_json_file,  # The function that finally processes the ingredients and creates a pastry.
+                                             # Expected signature:
+                                             # func(out_file, name, version, list_of_ingredients, options)
         **kwargs):                          # kwargs passed as `options` to the `baker_function`.
   with LogBlock("Oven"):
     # Make sure the working dir exists.
