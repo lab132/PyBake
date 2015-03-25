@@ -52,7 +52,7 @@ class LogBackend:
     # Auto generate helper methods like
     # LogBackend.error("This is an error!") or LogBackend.warning() out of the LogVerbosity enum
     for name, value in LogLevel.__members__.items():
-     setattr(LogBackend, name.lower(), create_log_message_function(value))
+      setattr(LogBackend, name.lower(), create_log_message_function(value))
 
   def __call__(self, *args):
     self.info(*args)

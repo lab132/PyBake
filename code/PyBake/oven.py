@@ -23,7 +23,7 @@ def pastry_to_json_file(out_file, name, version, ingredients, options):
   pastry["version"] = version
   pastry["ingredients"] = ingredients
 
-  indent_output = not (options.get("no_indent_output", False) if options is not None else False)
+  indent_output = not options.get("no_indent_output", False) if options is not None else False
   sort_keys = options.get("sort_keys", True) if options is not None else True
 
   # Write the JSON file (pastry.json by default).

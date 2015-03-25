@@ -9,7 +9,7 @@ from PyBake.logger import StdOutSink, LogVerbosity, log
 
 # Make sure this module is executed, not imported.
 if __name__ != '__main__':
-    raise RuntimeError("This module is meant to be executed, not imported!")
+  raise RuntimeError("This module is meant to be executed, not imported!")
 
 # Insert current working dir to the sys path
 # so we can import python modules from there.
@@ -19,48 +19,48 @@ sys.path.insert(0, os.getcwd())
 # Data for Argparser
 
 version = {
-    "Release": 0,
-    "Major": 0,
-    "Minor": 1,
+  "Release": 0,
+  "Major": 0,
+  "Minor": 1,
 }
 description = textwrap.dedent(
-    """
-    Dependency Management Tool for any kind of dependencies.
-    A single dependency is referred to as a crumble.
-    """)
+  """
+  Dependency Management Tool for any kind of dependencies.
+  A single dependency is referred to as a crumble.
+  """)
 
 ovenDescription = textwrap.dedent(
-    """
-    Tool to create crumbles.
-    """)
+  """
+  Tool to create crumbles.
+  """)
 
 clientDescription = textwrap.dedent(
-    """
-    Syncs all dependencies of the current Project with the server.
-    """)
+  """
+  Syncs all dependencies of the current Project with the server.
+  """)
 
 serverDescription = textwrap.dedent(
-    """
-    Sets up a server for crumble management
-    """)
+  """
+  Sets up a server for crumble management
+  """)
 
 
 def execute_shop(args):
-    log.debug(args)
-    from PyBake import shop
-    shop.run(**vars(args))
+  log.debug(args)
+  from PyBake import shop
+  shop.run(**vars(args))
 
 
 def execute_client(args):
-    log.debug(args)
-    response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
-    log.success(response)
+  log.debug(args)
+  response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
+  log.success(response)
 
 
 def execute_oven(args):
-    log.info("Executing oven")
-    from PyBake import oven
-    oven.run(**vars(args))
+  log.info("Executing oven")
+  from PyBake import oven
+  oven.run(**vars(args))
 
 # Main Parser
 # ====
