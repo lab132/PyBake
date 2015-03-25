@@ -2,21 +2,11 @@ from PyBake import *
 from PyBake.logger import *
 from importlib import import_module
 
-def upload_generator(pastry_name, pastry_file, ingredients):
-  # First, send the pastry file.
-  yield (pastry_name, pastry_file,)
-
-  # Then, iterate all ingredients, sending them one after another.
-  for ingredient in ingredients:
-    path = Path(ingredient["path"]).resolve().relative_to(Path.cwd())
-    log.info("Uploading {}...".format(path.as_posix()))
-    yield (path.as_posix(), path.open("rb"),)
-
 def run(*, pastry_path, config, **kwargs):
   import requests, json
 
   # Import the config script.
-  log.debug("Importing config script '{}'".format(config))
+  log.debug("Importing config script '{}.py'".format(config))
   config = import_module(config)
 
   # Make sure the path exists.
@@ -27,20 +17,30 @@ def run(*, pastry_path, config, **kwargs):
     log.error("Expected given pastry to be a file, but is a directory!")
     return
 
-  with ChangeDir(pastry_path.parent):
-    log.dev("Loading pastry from '{}'...".format(pastry_path.as_posix()))
-    with pastry_path.open("r") as pastry_file:
-      pastry = json.load(pastry_file)
-      data = { "name"    : pastry["name"],
-               "version" : pastry["version"],
-               "pastry_file_name"  : pastry_path.name, }
-      files = upload_generator(pastry_path.name, pastry_file, pastry["ingredients"])
-      postUrl = "{}/upload_crumble".format(config.server)
-      log.info("Posting to {}...".format(postUrl))
-      response = requests.post(postUrl, data=data, files=files)
-      if response.status_code == requests.codes.ok:
-        log.success("Successful deposit.")
+  import zipfile
+
+  # Extract pastry.json data from the pastry package (pastry.zip),
+  # and convert this data to a python dictionary, which we send to the server.
+  with pastry_path.open("rb") as pastry_file:
+    with zipfile.ZipFile(pastry_file) as zip_file:
+      # Note: For some reason, json.load does not accept the result
+      #       of ZipFile.open, so we use ZipFile.read instead to load
+      #       the entire file as bytes, convert it to a string, and parse that.
+      pastry_bytes = zip_file.read("pastry.json")
+      data = json.loads(pastry_bytes.decode("UTF-8"))
+
+  # Construct the `files` dictionary with the pastry package (.zip).
+  files = { "pastry" : pastry_path.open("rb") }
+
+  postUrl = "{}/upload_crumble".format(config.server)
+  log.info("Placing deposit with {}...".format(postUrl))
+  log.dev("Sending data: {}".format(data))
+  # Finally send the post request with some meta and file data.
+  response = requests.post(postUrl, data=data, files=files)
 
   with LogBlock("Response"):
     log.dev("Status Code: {}".format(response.status_code))
     log.dev(response.json())
+
+  if response.status_code == requests.codes.ok:
+    log.success("Successful deposit.")
