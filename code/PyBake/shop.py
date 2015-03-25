@@ -3,13 +3,14 @@ Serving crumbles to customers, fresh from the oven!
 '''
 
 from flask import Flask, request, session, g, redirect, url_for, abort, \
-  render_template, flash, jsonify
+    render_template, flash, jsonify
 
 import json
 
 from PyBake import Path
 from PyBake.logger import log, LogBlock
 from importlib import import_module
+
 
 class ShopDiskDriver:
 
@@ -18,7 +19,6 @@ class ShopDiskDriver:
     if not self.menuPath.exists():
       if not self.menuPath.parent.exists():
         self.menuPath.parent.mkdir(mode=0o700, parents=True)
-      #self.menuPath.open("w")
       self.menu = {}
       self.syncMenu()
     else:
@@ -57,9 +57,6 @@ class ShopDiskDriver:
       json.dump(self.menu, menuFile, indent=True, sort_keys=True)
 
 
-
-
-
 class ShopBackend:
 
   def __init__(self, driver=ShopDiskDriver()):
@@ -82,11 +79,11 @@ def Shop(name=__name__):
 
     # Load default config and override config from an environment variable
     app.config.update(dict(
-        DATABASE=(Path(app.root_path) / 'flaskr.db').as_posix(),
-        DEBUG=True,
-        SECRET_KEY='development key',
-        USERNAME='admin',
-        PASSWORD='default'
+      DATABASE=(Path(app.root_path) / 'flaskr.db').as_posix(),
+      DEBUG=True,
+      SECRET_KEY='development key',
+      USERNAME='admin',
+      PASSWORD='default'
     ))
     app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 
@@ -100,9 +97,10 @@ def Shop(name=__name__):
 
         returnCode = 200
         errors = []
-        data = {
-          "result" : "Ok"
-          }
+        data =
+        {
+          "result": "Ok"
+        }
 
         if fileName not in request.files:
           errors.append("missing pastry.json")
@@ -110,15 +108,15 @@ def Shop(name=__name__):
         if "crumbleName" not in request.form:
           errors.append("missing crumbleName")
 
-
         if "crumbleVersion" not in request.form:
           errors.append("missing crumbleVersion")
 
         if len(errors) == 0:
-          crumbleData = {
-            "name" : request.form["crumbleName"],
-            "version" : request.form["crumbleVersion"]
-            }
+          crumbleData =
+          {
+            "name": request.form["crumbleName"],
+            "version": request.form["crumbleVersion"]
+          }
           errors = shopBackend.saveCrumble(crumbleData, request.files)
 
         if len(errors) == 0:
@@ -127,7 +125,6 @@ def Shop(name=__name__):
           data["result"] = "Error"
 
         return jsonify(data), returnCode
-
 
     @app.route("/get_crumble", methods=["POST"])
     def get_crumble():

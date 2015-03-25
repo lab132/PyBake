@@ -71,9 +71,9 @@ class LogBackend:
       if block.printed is True:  # Block was printed so we need to print out that we close this block now
         blockInfo =
         {
-            "blockLevel": len(self.blockStack) - 1,  # Decrement by one so the first LogBlock is at indentation 0
-            "name": block.name,
-            "isOpening": False
+          "blockLevel": len(self.blockStack) - 1,  # Decrement by one so the first LogBlock is at indentation 0
+          "name": block.name,
+          "isOpening": False
         }
         for sink in self.sinks:
           sink.log_block(**blockInfo)
@@ -85,17 +85,17 @@ class LogBackend:
     if not self.quiet and verbosity <= self.verbosity:
       logInfo =
       {
-          "message": message,
-          "verbosity": verbosity,
-          "blockLevel": len(self.blockStack)
+        "message": message,
+        "verbosity": verbosity,
+        "blockLevel": len(self.blockStack)
       }
       for block in reversed(self.blockStack):
         if block.printed is False:
           block.printed = True
           blockInfo = {
-              "blockLevel": len(self.blockStack) - 1,  # Decrement by one so the first LogBlock is at indentation 0
-              "name": block.name,
-              "isOpening": True
+            "blockLevel": len(self.blockStack) - 1,  # Decrement by one so the first LogBlock is at indentation 0
+            "name": block.name,
+            "isOpening": True
           }
           for sink in self.sinks:
             sink.log_block(**blockInfo)
