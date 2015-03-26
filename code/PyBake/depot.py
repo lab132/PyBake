@@ -32,7 +32,7 @@ def run(*, pastry_path, config, **kwargs):
   # Construct the `files` dictionary with the pastry package (.zip).
   files = { "pastry" : pastry_path.open("rb") }
 
-  postUrl = "{}/upload_crumble".format(config.server)
+  postUrl = "{}/upload_pastry".format(config.server)
   log.info("Placing deposit with {}...".format(postUrl))
   log.dev("Sending data: {}".format(data))
   # Finally send the post request with some meta and file data.

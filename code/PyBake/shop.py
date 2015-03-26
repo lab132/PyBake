@@ -1,5 +1,5 @@
 '''
-Serving crumbles to customers, fresh from the oven!
+Serving pastries to customers, fresh from the oven!
 '''
 
 from flask import Flask, request, session, g, redirect, url_for, abort, \
@@ -11,63 +11,82 @@ from PyBake import Path
 from PyBake.logger import log, LogBlock
 from importlib import import_module
 
+class Pastry:
+  def __init__(self, name, version, file):
+    self.name = name
+    self.version = version
+    self.file = file
+
+  def as_path(self):
+    print("name", self.name)
+    print("version", self.version)
+    return Path(self.name) / "{}.zip".format(self.version)
+    #import base64
+    #encoded_path = base64.urlsafe_b64encode("{0.name}_{0.version}".format(self).encode("UTF-8"))
+    #return Path(encoded_path.decode("UTF-8"))
+
 
 class ShopDiskDriver:
 
+  pastries_root = Path("pastries")
+
   def __init__(self):
-    self.menuPath = Path("crumbles/menu.json")
-    if not self.menuPath.exists():
-      if not self.menuPath.parent.exists():
-        self.menuPath.parent.mkdir(mode=0o700, parents=True)
+    # Make sure the pastries dir exists
+    if not ShopDiskDriver.pastries_root.exists():
+      ShopDiskDriver.pastries_root.mkdir(parents=True)
+    ShopDiskDriver.pastries_root = ShopDiskDriver.pastries_root.resolve()
+    log.info("Pastries dir: {}".format(ShopDiskDriver.pastries_root.as_posix()))
+
+    self.menu_path = ShopDiskDriver.pastries_root / "menu.json"
+    if not self.menu_path.exists():
+      if not self.menu_path.parent.exists():
+        self.menu_path.parent.mkdir(mode=0o700, parents=True)
       self.menu = {}
-      self.syncMenu()
+      self.sync_menu()
     else:
-      with self.menuPath.open("r") as menuFile:
-        self.menu = json.load(menuFile)
+      with self.menu_path.open("r") as menu_file:
+        self.menu = json.load(menu_file)
 
-  def createCrumble(self, crumbleData, pastryJson):
-    with LogBlock("Shop Disk"):
-      import base64
-      file_name_string = base64.urlsafe_b64encode(bytes("{name}_{version}".format(**crumbleData), "UTF-8"))
-      crumbleDir = Path("crumbles/{0}".format(file_name_string))
-      log.info("Working on path {0}".format(crumbleDir.as_posix()))
-      if not crumbleDir.exists():
-        log.info("Path is missing.... creating")
-        crumbleDir.mkdir(mode=0o700, parents=True)
-      pastryPath = crumbleDir / "pastry.json"
+  def create_pastry(self, pastry):
+    with LogBlock("Writing Disk"):
+      pastry_path = ShopDiskDriver.pastries_root / pastry.as_path()
+      if not pastry_path.parent.exists():
+        pastry_path.parent.mkdir(parents=True)
 
-      with pastryPath.open("w") as pastryFile:
-        log.info("Writing pastry.json with {0} chars".format(len(pastryJson)))
-        pastryFile.write(pastryJson)
+      log.info("Pastry destination: {}".format(pastry_path.as_posix()))
 
-      self.addToMenu(crumbleData)
+      pastry.file.save(pastry_path.as_posix())
+      self.add_to_menu(pastry)
 
-  def addToMenu(self, crumbleData):
+  def add_to_menu(self, pastry):
     with LogBlock("Add To Menu"):
-      log.info("Adding {name} with version {version} to menu".format(**crumbleData))
-      versionSet = self.menu.get(crumbleData["name"], [])
-      if not crumbleData["version"] in versionSet:
-        versionSet.append(crumbleData["version"])
-      self.menu[crumbleData["name"]] = versionSet
-      self.syncMenu()
+      log.info("Adding {0.name} with version {0.version} to menu.".format(pastry))
+      # Get the menu entry for this pastry (name only) or a new list.
+      known_versions = self.menu.get(pastry.name, {})
+      if pastry.version not in known_versions:
+        known_versions.update({ pastry.version : pastry.as_path().as_posix() })
+      self.menu[pastry.name] = known_versions
+      self.sync_menu()
 
-  def syncMenu(self):
-    with self.menuPath.open("w") as menuFile:
+  def sync_menu(self):
+    with self.menu_path.open("w") as menu_file:
       log.info("Writing menu to disk")
-      json.dump(self.menu, menuFile, indent=True, sort_keys=True)
+      json.dump(self.menu, menu_file, indent=True, sort_keys=True)
 
 
 class ShopBackend:
-
   def __init__(self, driver=ShopDiskDriver()):
     self.driver = driver
 
-  def saveCrumble(self, crumbleData, files):
-    with LogBlock("Backend Crumble Save"):
-      log.debug("Saving crumble with pastryFile of length {0}".format(len(pastryFile)))
-      pastryFile = files["pastry.json"].read().decode("UTF-8")
-      pastryObject = json.loads(pastryFile)
-      self.driver.createCrumble(crumbleData, pastryFile)
+  def process_pastry(self, pastry_data, pastry_files):
+    num_files = len(pastry_files)
+    import zipfile
+    with LogBlock("Backend Pastry Processing ({} files)".format(num_files)):
+      for pastry_file in pastry_files:
+        pastry = Pastry(pastry_data["name"][0],
+                        pastry_data["version"][0],
+                        pastry_file)
+        self.driver.create_pastry(pastry)
 
 shopBackend = ShopBackend()
 
@@ -87,45 +106,44 @@ def Shop(name=__name__):
     ))
     app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 
-    @app.route("/upload_crumble", methods=["POST"])
-    def upload_crumble():
+    @app.route("/upload_pastry", methods=["POST"])
+    def upload_pastry():
       with LogBlock("Upload"):
         log.debug("Recieved upload request")
-        log.debug(request.form)
-        log.debug(request.files)
-        fileName = "pastry.json"
+
+        data = dict(request.form)
+        log.debug("Data: {}".format(data))
+
+        files = dict(request.files)
+        log.debug("Files: {}".format(files))
 
         returnCode = 200
         errors = []
-        data = {
+        response = {
           "result": "Ok"
         }
 
-        if fileName not in request.files:
-          errors.append("missing pastry.json")
+        if "name" not in data:
+          errors.append("missing pastry 'name'")
 
-        if "crumbleName" not in request.form:
-          errors.append("missing crumbleName")
+        if "version" not in data:
+          errors.append("missing pastry 'version'")
 
-        if "crumbleVersion" not in request.form:
-          errors.append("missing crumbleVersion")
-
-        if len(errors) == 0:
-          crumbleData = {
-            "name": request.form["crumbleName"],
-            "version": request.form["crumbleVersion"]
-          }
-          errors = shopBackend.saveCrumble(crumbleData, request.files)
+        if "pastry" not in files:
+          errors.append("missing pastry file")
 
         if len(errors) == 0:
+          errors = shopBackend.process_pastry(data, files["pastry"])
+
+        if errors and len(errors) != 0:
           returnCode = 400
-          data["errors"] = errors
-          data["result"] = "Error"
+          response["errors"] = errors
+          response["result"] = "Error"
 
-        return jsonify(data), returnCode
+        return jsonify(response), returnCode
 
-    @app.route("/get_crumble", methods=["POST"])
-    def get_crumble():
+    @app.route("/get_pastry", methods=["POST"])
+    def get_pastry():
       pass
 
     return app
