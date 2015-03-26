@@ -3,7 +3,7 @@ Serving pastries to customers, fresh from the oven!
 '''
 
 from flask import Flask, request, session, g, redirect, url_for, abort, \
-    render_template, flash, jsonify
+    render_template, flash, jsonify, send_from_directory
 
 import json
 
@@ -61,16 +61,19 @@ class ShopDiskDriver:
 
   def has_pastry(self, *, name, version, **kwargs):
     """Checks if the menu contains a given pastry"""
-    return name is in self.menu and version is in self.menu[name]
+    log.info("menu: {}".format(self.menu))
+    return name in self.menu and version in self.menu[name]
 
-  def get_pastry(self, name, version):
-    """Fetches a readable object of the pastry from the disk if it exists otherwise returns none"""
+  def get_pastry(self, errors, name, version):
+    """Fetches a readable object of the pastry from the disk if it exists otherwise returns None."""
     with LogBlock("Get Pastry"):
       if self.has_pastry(name=name, version=version):
         log.info("Found pastry {} with version {} at {}".format(name,version,self.menu[name][version]))
-        return Path(self.menu[name][version]).open("r")
+        return send_from_directory(ShopDiskDriver.pastries_root.as_posix(), self.menu[name][version])
       else:
-        log.error("Could not find pastry '{}' with version '{}'".format(name,version))
+        err = "Could not find pastry '{}' with version '{}'".format(name,version)
+        log.error(err)
+        errors.append(err)
         return None
 
 
@@ -106,9 +109,10 @@ class ShopBackend:
                         pastry_file)
         self.driver.create_pastry(pastry)
 
-  def get_pastry(self, pastry_data):
+  def get_pastry(self, errors, pastry_data):
     """Gets a pastry from the shop if it exists"""
-    pastry = self.driver.get_pastry(pastry_data["name"], pastry_data["version"])
+    log.info("pastry_data: {1} {0}".format(pastry_data, type(pastry_data)))
+    return self.driver.get_pastry(errors, pastry_data["name"][0], pastry_data["version"][0])
 
 shopBackend = ShopBackend()
 
@@ -172,9 +176,6 @@ def Shop(name=__name__):
         data = dict(request.form)
         log.debug("Data: {}".format(data))
 
-        files = dict(request.files)
-        log.debug("Files: {}".format(files))
-
         returnCode = 200
         errors = []
         response = {
@@ -186,6 +187,20 @@ def Shop(name=__name__):
 
         if "version" not in data:
           errors.append("missing pastry 'version'")
+
+        pastry = None
+        if len(errors) == 0:
+          pastry = shopBackend.get_pastry(errors, data)
+          if pastry:
+            pass
+
+        if errors and len(errors) != 0:
+          returnCode = 400
+          response["errors"] = errors
+          response["result"] = "Error"
+
+        #return jsonify(response), returnCode
+        return pastry
 
     return app
 

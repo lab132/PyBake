@@ -54,9 +54,17 @@ def execute_shop(args):
 
 def execute_client(args):
   log.debug(args)
-  response = json.load(urlopen("{0}/list_packages".format(crumble.server)))
-  log.success(response)
+  import requests
 
+  import config
+
+  data = dict(name="ezEngine",
+              version="milestone-6")
+
+  response = requests.post("{}/get_pastry".format(config.server), data=data)
+  log.info(response)
+  with Path("ezEngine_milestone-6.zip").open("wb") as out_file:
+    out_file.write(response.content)
 
 def execute_oven(args):
   log.info("Executing oven")
