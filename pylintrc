@@ -24,18 +24,9 @@ persistent=yes
 # usually to register additional checkers.
 load-plugins=
 
-# Deprecated. It was used to include message's id in output. Use --msg-template
-
-# instead.
-include-ids=no
-
-# Deprecated. It was used to include symbolic ids of messages in output. Use
-
-# --msg-template instead.
-symbols=no
 
 # Use multiple processes to speed up Pylint.
-jobs=8
+jobs=1
 
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 

@@ -4,8 +4,8 @@ import sys
 import os
 import argparse
 import textwrap
-from PyBake import Path
-from PyBake.logger import StdOutSink, LogVerbosity, log
+from PyBake import Path, version
+from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock
 
 # Make sure this module is executed, not imported.
 if __name__ != '__main__':
@@ -18,11 +18,6 @@ sys.path.insert(0, os.getcwd())
 
 # Data for Argparser
 
-version = {
-  "Release": 0,
-  "Major": 0,
-  "Minor": 1,
-}
 description = textwrap.dedent(
   """
   Dependency Management Tool for any kind of dependencies.
@@ -38,6 +33,12 @@ clientDescription = textwrap.dedent(
   """
   Syncs all dependencies of the current Project with the server.
   """)
+
+depotDescription = textwrap.dedent(
+  """
+  Uploads crumbles to the server given a pastry info file.
+  """
+  )
 
 serverDescription = textwrap.dedent(
   """
@@ -62,8 +63,15 @@ def execute_oven(args):
   from PyBake import oven
   oven.run(**vars(args))
 
-# Main Parser
-# ====
+def execute_depot(args):
+  with LogBlock("Depot"):
+    log.debug(args)
+    from PyBake import depot
+    depot.run(**vars(args))
+
+
+## Main Parser
+## ====
 mainParser = argparse.ArgumentParser(prog="PyBake", description=description)
 mainParser.add_argument("-V", "--Version", action="version",
                         version="%(prog)s v{Release}.{Major}.{Minor}".format(**version))
@@ -92,22 +100,39 @@ ovenParser.add_argument("pastry_version",
 ovenParser.add_argument("-r", "--recipe", type=str, default="recipe",
                         help="Name of the recipe module. "
                         "This module is expected to live directly in the working directory, "
-                        "not sub-directory, with the name `<recipe>.py`.")
-ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.json"),
-                        help="The resulting JSON file relative to the working dir.")
+                        "not any sub-directory, with the name `<RECIPE>.py`.")
+ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.zip"),
+                        help="The resulting JSON file relative to the original working dir. Ignored --working-dir")
 ovenParser.add_argument("-d", "--working-dir", type=Path, default=Path("."),
-                        help="The working directory.")
+                        help="The working directory when executing the RECIPE.")
 ovenParser.add_argument("--no-indent-output", action="store_true", default=False,
                         help="Whether to produce a compressed NOT human-friendly, unindented JSON file.")
 ovenParser.set_defaults(func=execute_oven)
 
+# DepotParser
+# =============
+
+depotParser = subparsers.add_parser("depot", help=depotDescription, description=depotDescription)
+
+depotParser.add_argument("pastry_path",
+                         type=Path,
+                         nargs="?",
+                         default=Path("pastry.zip"),
+                         help="Path to the pastry file (defaults to \"./pastry.zip\").")
+
+depotParser.add_argument("-c" , "--config",
+                         default="config",
+                         help="Name of the python module containing configuration data. "
+                         "This file must exist in the working directory. (defaults to \"config\").")
+depotParser.set_defaults(func=execute_depot)
+
 # ClientParser
-# ====
+# ============
 
 clientParser = subparsers.add_parser("client", help=clientDescription, description=clientDescription)
 
-clientParser.add_argument("-c", "--config", type=argparse.FileType(mode="r", encoding="UTF-8"), default="config.py",
-                          help="Supply a custom config for the client (defaults to config.py)")
+clientParser.add_argument("-c", "--config", default="config",
+                          help="Supply a custom config for the client (defaults to config)")
 clientParser.set_defaults(func=execute_client)
 
 # ServerParser
