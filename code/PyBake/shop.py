@@ -48,6 +48,7 @@ class ShopDiskDriver:
         self.menu = json.load(menu_file)
 
   def create_pastry(self, pastry):
+    """Writes the given pastry to the disk"""
     with LogBlock("Writing Disk"):
       pastry_path = ShopDiskDriver.pastries_root / pastry.as_path()
       if not pastry_path.parent.exists():
@@ -58,7 +59,23 @@ class ShopDiskDriver:
       pastry.file.save(pastry_path.as_posix())
       self.add_to_menu(pastry)
 
+  def has_pastry(self, *, name, version, **kwargs):
+    """Checks if the menu contains a given pastry"""
+    return name is in self.menu and version is in self.menu[name]
+
+  def get_pastry(self, name, version):
+    """Fetches a readable object of the pastry from the disk if it exists otherwise returns none"""
+    with LogBlock("Get Pastry"):
+      if self.has_pastry(name=name, version=version):
+        log.info("Found pastry {} with version {} at {}".format(name,version,self.menu[name][version]))
+        return Path(self.menu[name][version]).open("r")
+      else:
+        log.error("Could not find pastry '{}' with version '{}'".format(name,version))
+        return None
+
+
   def add_to_menu(self, pastry):
+    """Adds a new pastry to the menu"""
     with LogBlock("Add To Menu"):
       log.info("Adding {0.name} with version {0.version} to menu.".format(pastry))
       # Get the menu entry for this pastry (name only) or a new list.
@@ -69,6 +86,7 @@ class ShopDiskDriver:
       self.sync_menu()
 
   def sync_menu(self):
+    """Syncs the menu to the file system"""
     with self.menu_path.open("w") as menu_file:
       log.info("Writing menu to disk")
       json.dump(self.menu, menu_file, indent=True, sort_keys=True)
@@ -87,6 +105,10 @@ class ShopBackend:
                         pastry_data["version"][0],
                         pastry_file)
         self.driver.create_pastry(pastry)
+
+  def get_pastry(self, pastry_data):
+    """Gets a pastry from the shop if it exists"""
+    pastry = self.driver.get_pastry(pastry_data["name"], pastry_data["version"])
 
 shopBackend = ShopBackend()
 
@@ -144,7 +166,26 @@ def Shop(name=__name__):
 
     @app.route("/get_pastry", methods=["POST"])
     def get_pastry():
-      pass
+      with LogBlock("Get Pastry"):
+        log.debug("Recieved download request")
+
+        data = dict(request.form)
+        log.debug("Data: {}".format(data))
+
+        files = dict(request.files)
+        log.debug("Files: {}".format(files))
+
+        returnCode = 200
+        errors = []
+        response = {
+          "result": "Ok"
+        }
+
+        if "name" not in data:
+          errors.append("missing pastry 'name'")
+
+        if "version" not in data:
+          errors.append("missing pastry 'version'")
 
     return app
 
