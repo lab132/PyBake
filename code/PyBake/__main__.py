@@ -29,9 +29,9 @@ ovenDescription = textwrap.dedent(
   Tool to create crumbles.
   """)
 
-clientDescription = textwrap.dedent(
+stockDescription = textwrap.dedent(
   """
-  Syncs all dependencies of the current Project with the server.
+  Retrieves pastries from the shop.
   """)
 
 depotDescription = textwrap.dedent(
@@ -52,21 +52,10 @@ def execute_shop(args):
   shop.run(**vars(args))
 
 
-def execute_client(args):
+def execute_stock(args):
   log.debug(args)
-  import requests
-
-  import config
-
-  data = dict(name="ezEngine",
-              version="milestone-6")
-
-  response = requests.post("{}/get_pastry".format(config.server), data=data, stream=True)
-  log.info(response)
-  with Path("ezEngine_milestone-6.zip").open("wb") as out_file:
-    chunk_size = 1024 * 4 # 4 KiB at a time.
-    for chunk in response.iter_content(chunk_size):
-      out_file.write(chunk)
+  from PyBake import stock
+  stock.run(**vars(args))
 
 def execute_oven(args):
   log.info("Executing oven")
@@ -136,14 +125,14 @@ depotParser.add_argument("-c" , "--config",
                          "This file must exist in the working directory. (defaults to \"config\").")
 depotParser.set_defaults(func=execute_depot)
 
-# ClientParser
+# StockParser
 # ============
 
-clientParser = subparsers.add_parser("client", help=clientDescription, description=clientDescription)
+stockParser = subparsers.add_parser("stock", help=stockDescription, description=stockDescription)
 
-clientParser.add_argument("-c", "--config", default="config",
-                          help="Supply a custom config for the client (defaults to config)")
-clientParser.set_defaults(func=execute_client)
+stockParser.add_argument("-p", "--pastries", default="pastries",
+                          help="The file describing which pastries are required. Defaults to 'pastries' and will import <pastries>.py.")
+stockParser.set_defaults(func=execute_stock)
 
 # ServerParser
 # ====
