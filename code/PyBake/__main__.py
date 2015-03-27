@@ -61,10 +61,12 @@ def execute_client(args):
   data = dict(name="ezEngine",
               version="milestone-6")
 
-  response = requests.post("{}/get_pastry".format(config.server), data=data)
+  response = requests.post("{}/get_pastry".format(config.server), data=data, stream=True)
   log.info(response)
   with Path("ezEngine_milestone-6.zip").open("wb") as out_file:
-    out_file.write(response.content)
+    chunk_size = 1024 * 4 # 4 KiB at a time.
+    for chunk in response.iter_content(chunk_size):
+      out_file.write(chunk)
 
 def execute_oven(args):
   log.info("Executing oven")
