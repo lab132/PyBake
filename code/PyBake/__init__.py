@@ -148,3 +148,108 @@ class ChangeDir:
   def exit(self):
     import os
     os.chdir(self.previous.as_posix())
+
+class Pastry:
+  def __init__(self, name, version, file):
+    self.name = name
+    self.version = version
+    self.file = file
+
+  def as_path(self):
+    print("name", self.name)
+    print("version", self.version)
+    return Path(self.name) / "{}.zip".format(self.version)
+    #import base64
+    #encoded_path = base64.urlsafe_b64encode("{0.name}_{0.version}".format(self).encode("UTF-8"))
+    #return Path(encoded_path.decode("UTF-8"))
+
+
+class MenuDiskDriver:
+
+  pastries_root = Path("pastries")
+
+  def __init__(self):
+    log.debug("Creating menu disk driver.")
+    # Make sure the pastries dir exists
+    if not MenuDiskDriver.pastries_root.exists():
+      MenuDiskDriver.pastries_root.mkdir(parents=True)
+    MenuDiskDriver.pastries_root = MenuDiskDriver.pastries_root.resolve()
+    log.info("Pastries dir: {}".format(MenuDiskDriver.pastries_root.as_posix()))
+
+    self.menu_path = MenuDiskDriver.pastries_root / "menu.json"
+    if not self.menu_path.exists():
+      if not self.menu_path.parent.exists():
+        self.menu_path.parent.mkdir(mode=0o700, parents=True)
+      self.menu = {}
+      self.sync_menu()
+    else:
+      with self.menu_path.open("r") as menu_file:
+        self.menu = json.load(menu_file)
+
+  def create_pastry(self, pastry):
+    """Writes the given pastry to the disk"""
+    with LogBlock("Writing Disk"):
+      pastry_path = MenuDiskDriver.pastries_root / pastry.as_path()
+      if not pastry_path.parent.exists():
+        pastry_path.parent.mkdir(parents=True)
+
+      log.info("Pastry destination: {}".format(pastry_path.as_posix()))
+
+      pastry.file.save(pastry_path.as_posix())
+      self.add_to_menu(pastry)
+
+  def has_pastry(self, *, name, version, **kwargs):
+    """Checks if the menu contains a given pastry"""
+    log.info("menu: {}".format(self.menu))
+    return name in self.menu and version in self.menu[name]
+
+  def get_pastry(self, errors, name, version):
+    """Fetches a readable object of the pastry from the disk if it exists otherwise returns None."""
+    with LogBlock("Get Pastry"):
+      if self.has_pastry(name=name, version=version):
+        log.info("Found pastry {} with version {} at {}".format(name,version,self.menu[name][version]))
+        return MenuDiskDriver.pastries_root / self.menu[name][version]
+      else:
+        err = "Could not find pastry '{}' with version '{}'".format(name,version)
+        log.error(err)
+        errors.append(err)
+        return None
+
+
+  def add_to_menu(self, pastry):
+    """Adds a new pastry to the menu"""
+    with LogBlock("Add To Menu"):
+      log.info("Adding {0.name} with version {0.version} to menu.".format(pastry))
+      # Get the menu entry for this pastry (name only) or a new list.
+      known_versions = self.menu.get(pastry.name, {})
+      if pastry.version not in known_versions:
+        known_versions.update({ pastry.version : pastry.as_path().as_posix() })
+      self.menu[pastry.name] = known_versions
+      self.sync_menu()
+
+  def sync_menu(self):
+    """Syncs the menu to the file system"""
+    with self.menu_path.open("w") as menu_file:
+      log.info("Writing menu to disk")
+      json.dump(self.menu, menu_file, indent=True, sort_keys=True)
+
+
+class MenuBackend:
+  def __init__(self, driver=MenuDiskDriver()):
+    log.debug("Creating menu backend.")
+    self.driver = driver
+
+  def process_pastry(self, pastry_name, pastry_version, pastry_files):
+    num_files = len(pastry_files)
+    import zipfile
+    with LogBlock("Backend Pastry Processing {} File(s)".format(num_files)):
+      for pastry_file in pastry_files:
+        pastry = Pastry(pastry_name,
+                        pastry_version,
+                        pastry_file)
+        self.driver.create_pastry(pastry)
+
+  def get_pastry(self, errors, pastry_name, pastry_version):
+    """Gets a pastry from the menu, if it exists"""
+    log.info("pastry_data: {0} version {1}".format(pastry_name, pastry_version))
+    return self.driver.get_pastry(errors, pastry_name, pastry_version)

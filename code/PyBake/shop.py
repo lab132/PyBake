@@ -7,114 +7,11 @@ from flask import Flask, request, session, g, redirect, url_for, abort, \
 
 import json
 
-from PyBake import Path
+from PyBake import Path, MenuBackend
 from PyBake.logger import log, LogBlock
 from importlib import import_module
 
-class Pastry:
-  def __init__(self, name, version, file):
-    self.name = name
-    self.version = version
-    self.file = file
-
-  def as_path(self):
-    print("name", self.name)
-    print("version", self.version)
-    return Path(self.name) / "{}.zip".format(self.version)
-    #import base64
-    #encoded_path = base64.urlsafe_b64encode("{0.name}_{0.version}".format(self).encode("UTF-8"))
-    #return Path(encoded_path.decode("UTF-8"))
-
-
-class ShopDiskDriver:
-
-  pastries_root = Path("pastries")
-
-  def __init__(self):
-    # Make sure the pastries dir exists
-    if not ShopDiskDriver.pastries_root.exists():
-      ShopDiskDriver.pastries_root.mkdir(parents=True)
-    ShopDiskDriver.pastries_root = ShopDiskDriver.pastries_root.resolve()
-    log.info("Pastries dir: {}".format(ShopDiskDriver.pastries_root.as_posix()))
-
-    self.menu_path = ShopDiskDriver.pastries_root / "menu.json"
-    if not self.menu_path.exists():
-      if not self.menu_path.parent.exists():
-        self.menu_path.parent.mkdir(mode=0o700, parents=True)
-      self.menu = {}
-      self.sync_menu()
-    else:
-      with self.menu_path.open("r") as menu_file:
-        self.menu = json.load(menu_file)
-
-  def create_pastry(self, pastry):
-    """Writes the given pastry to the disk"""
-    with LogBlock("Writing Disk"):
-      pastry_path = ShopDiskDriver.pastries_root / pastry.as_path()
-      if not pastry_path.parent.exists():
-        pastry_path.parent.mkdir(parents=True)
-
-      log.info("Pastry destination: {}".format(pastry_path.as_posix()))
-
-      pastry.file.save(pastry_path.as_posix())
-      self.add_to_menu(pastry)
-
-  def has_pastry(self, *, name, version, **kwargs):
-    """Checks if the menu contains a given pastry"""
-    log.info("menu: {}".format(self.menu))
-    return name in self.menu and version in self.menu[name]
-
-  def get_pastry(self, errors, name, version):
-    """Fetches a readable object of the pastry from the disk if it exists otherwise returns None."""
-    with LogBlock("Get Pastry"):
-      if self.has_pastry(name=name, version=version):
-        log.info("Found pastry {} with version {} at {}".format(name,version,self.menu[name][version]))
-        return send_from_directory(ShopDiskDriver.pastries_root.as_posix(), self.menu[name][version])
-      else:
-        err = "Could not find pastry '{}' with version '{}'".format(name,version)
-        log.error(err)
-        errors.append(err)
-        return None
-
-
-  def add_to_menu(self, pastry):
-    """Adds a new pastry to the menu"""
-    with LogBlock("Add To Menu"):
-      log.info("Adding {0.name} with version {0.version} to menu.".format(pastry))
-      # Get the menu entry for this pastry (name only) or a new list.
-      known_versions = self.menu.get(pastry.name, {})
-      if pastry.version not in known_versions:
-        known_versions.update({ pastry.version : pastry.as_path().as_posix() })
-      self.menu[pastry.name] = known_versions
-      self.sync_menu()
-
-  def sync_menu(self):
-    """Syncs the menu to the file system"""
-    with self.menu_path.open("w") as menu_file:
-      log.info("Writing menu to disk")
-      json.dump(self.menu, menu_file, indent=True, sort_keys=True)
-
-
-class ShopBackend:
-  def __init__(self, driver=ShopDiskDriver()):
-    self.driver = driver
-
-  def process_pastry(self, pastry_data, pastry_files):
-    num_files = len(pastry_files)
-    import zipfile
-    with LogBlock("Backend Pastry Processing ({} files)".format(num_files)):
-      for pastry_file in pastry_files:
-        pastry = Pastry(pastry_data["name"][0],
-                        pastry_data["version"][0],
-                        pastry_file)
-        self.driver.create_pastry(pastry)
-
-  def get_pastry(self, errors, pastry_data):
-    """Gets a pastry from the shop if it exists"""
-    log.info("pastry_data: {1} {0}".format(pastry_data, type(pastry_data)))
-    return self.driver.get_pastry(errors, pastry_data["name"][0], pastry_data["version"][0])
-
-shopBackend = ShopBackend()
+menuBackend = MenuBackend()
 
 
 def Shop(name=__name__):
@@ -159,7 +56,10 @@ def Shop(name=__name__):
           errors.append("missing pastry file")
 
         if len(errors) == 0:
-          errors = shopBackend.process_pastry(data, files["pastry"])
+          # `data` is a multi-dict, which is why we need to extract it here.
+          name = data["name"][0]
+          version = data["version"][0]
+          errors = menuBackend.process_pastry(name, version, files["pastry"])
 
         if errors and len(errors) != 0:
           returnCode = 400
@@ -188,11 +88,16 @@ def Shop(name=__name__):
         if "version" not in data:
           errors.append("missing pastry 'version'")
 
-        pastry = None
+        pastry_path = None
         if len(errors) == 0:
-          pastry = shopBackend.get_pastry(errors, data)
-          if pastry:
-            pass
+          # `data` is a multi-dict, which is why we need to extract it here.
+          name = data["name"][0]
+          version = data["version"][0]
+          pastry_path = menuBackend.get_pastry(errors, name, version)
+
+        if not pastry_path:
+          # TODO error handling => file not found.
+          pass
 
         if errors and len(errors) != 0:
           returnCode = 400
@@ -200,7 +105,7 @@ def Shop(name=__name__):
           response["result"] = "Error"
 
         #return jsonify(response), returnCode
-        return pastry
+        return send_from_directory(pastry_path.parent.as_posix(), pastry_path.name)
 
     return app
 

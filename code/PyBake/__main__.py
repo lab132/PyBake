@@ -51,7 +51,6 @@ def execute_shop(args):
   from PyBake import shop
   shop.run(**vars(args))
 
-
 def execute_stock(args):
   log.debug(args)
   from PyBake import stock
@@ -131,7 +130,7 @@ depotParser.set_defaults(func=execute_depot)
 stockParser = subparsers.add_parser("stock", help=stockDescription, description=stockDescription)
 
 stockParser.add_argument("-p", "--pastries", default="pastries",
-                          help="The file describing which pastries are required. Defaults to 'pastries' and will import <pastries>.py.")
+                          help="The file describing which pastries are required. Defaults to 'pastries' which will import <pastries>.py.")
 stockParser.set_defaults(func=execute_stock)
 
 # ServerParser
