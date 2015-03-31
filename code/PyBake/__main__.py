@@ -129,8 +129,9 @@ depotParser.set_defaults(func=execute_depot)
 
 stockParser = subparsers.add_parser("stock", help=stockDescription, description=stockDescription)
 
-stockParser.add_argument("-p", "--pastries", default="pastries",
-                          help="The file describing which pastries are required. Defaults to 'pastries' which will import <pastries>.py.")
+stockParser.add_argument("shopping_list", nargs="?", type=Path, default=Path("shoppingList.json"),
+                         help="Sets the used shoppingList (defaults to 'shoppingList.json') which will be reused"
+                         "to restock pastries from the shop.")
 stockParser.set_defaults(func=execute_stock)
 
 # ServerParser
