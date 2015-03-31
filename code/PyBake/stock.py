@@ -1,18 +1,17 @@
 """The place to get your daily pastries!"""
 from PyBake import *
 
-def run(**kwargs):
+def run(*, shopping_list=Path("shoppingList.json"), **kwargs):
+  """Restocks pastries from the shop using the shopping list"""
   with LogBlock("Stock Exchange"):
     import requests
 
-    import pastries
+    shoppingList = ShoppingList.FromJSON(shopping_list.open("r").read())
 
-    data = dict(name="ezEngine",
-                version="milestone-6")
-
-    response = requests.post("{}/get_pastry".format(pastries.server), data=data, stream=True)
-    log.info(response)
-    with Path("ezEngine_milestone-6.zip").open("wb") as out_file:
-      chunk_size = 1024 * 4 # 4 KiB at a time.
-      for chunk in response.iter_content(chunk_size):
-        out_file.write(chunk)
+    for pastry in shoppingList.pastries:
+      response = requests.post("{}/get_pastry".format(shoppingList.serverConfig), data=data, stream=True)
+      log.info(response)
+      with Path("ezEngine_milestone-6.zip").open("wb") as out_file:
+        chunk_size = 1024 * 4 # 4 KiB at a time.
+        for chunk in response.iter_content(chunk_size):
+          out_file.write(chunk)
