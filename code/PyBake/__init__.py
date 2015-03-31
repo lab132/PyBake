@@ -215,6 +215,34 @@ class Pastry:
     #encoded_path = base64.urlsafe_b64encode("{0.name}_{0.version}".format(self).encode("UTF-8"))
     #return Path(encoded_path.decode("UTF-8"))
 
+class ShoppingList:
+  """Describes the shop and the pastries needed for restocking."""
+
+  def __init__(self):
+    """Creates a default localhost config with no pastries"""
+    self.serverConfig = ServerConfig(host="127.0.0.1")
+    self.pastries = []
+
+  @staticmethod
+  def FromJSON(jsonData):
+    """Reads the shoppingList from a given json string"""
+    with LogBlock("ShoppingList From Json"):
+      import json
+      data = json.loads(jsonData)
+
+      if "shop" not in data:
+        log.error("No shop specified in the shoppingList!")
+        return None
+      if "pastries" not in data:
+        log.error("No pastries specified in the shoppingList!")
+        return None
+
+      shoppingList = ShoppingList()
+      shoppingList.serverConfig = ServerConfig.FromString(data["shop"])
+      return shoppingList
+
+
+
 
 class MenuDiskDriver:
 
