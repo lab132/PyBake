@@ -32,6 +32,58 @@ class ServerConfig:
     self.port = port
     self.protocol = protocol
 
+  @staticmethod
+  def FromString(string):
+    """Creates a server configuration from a given <protocol>://<address>:<port> string"""
+
+    with LogBlock("ServerConfig From String"):
+      import re
+      # Ported from https://gist.github.com/dperini/729294
+      # Re-enabled local ip addresses
+      urlMatch=(r"^"
+      # protocol identifier
+      r"(?:(?P<protocol>https?)://)"
+      # user:pass authentication
+      r"(?:(?P<user>\S+)(?::(?P<password>\S*))?@)?"
+      r"(?P<address>"
+      # IP address exclusion
+      # private & local networks
+      #"(?!(?:10|127)(?:\.\d{1,3}){3})"
+      #"(?!(?:169\\.254|192\.168)(?:\.\d{1,3}){2})"
+      #"(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})"
+      # IP address dotted notation octets
+      # excludes network & broacast addresses
+      # (first & last IP address of each class)
+      r"(?:[0-9]\d?|1\d\d|2[0-4]\d|25[0-5])"
+      r"(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}"
+      r"(?:\.(?:[0-9]\d?|1\d\d|2[0-4]\d|25[0-4]))"
+      r"|"
+      # host name
+      r"(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)"
+      # domain name
+      r"(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*"
+      # TLD identifier
+      r"(?:\.(?:[a-z\u00a1-\uffff]{2,}))"
+      r")"
+      # port number
+      r"(?::(?P<port>\d{2,5}))?"
+      # resource path
+      r"(?P<resource_path>/\S*)?"
+      r"$")
+      match = re.match(urlMatch, string)
+      if match is None:
+          log.error("Could not match given string as an url")
+          return None
+      log.info(match)
+      matchDict = match.groupdict()
+      port = matchDict.get("port", None)
+      if port is not None:
+        port = int(port)
+        log.info("Port is {}".format(port))
+      else:
+        log.info("No port given in url")
+      return ServerConfig(host=matchDict["address"], port=port, protocol=matchDict.get("protocol", "http"))
+
   def __str__(self):
     return "{}://{}:{}".format(self.protocol, self.host, self.port)
 
