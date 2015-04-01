@@ -2,3 +2,6 @@ flask
 argparse
 watchdog
 requests
+bumpversion
+wheel
+twine
