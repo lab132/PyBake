@@ -1,2 +1,4 @@
 flask
 argparse
+watchdog
+requests
