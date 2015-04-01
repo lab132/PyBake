@@ -132,6 +132,10 @@ stockParser = subparsers.add_parser("stock", help=stockDescription, description=
 stockParser.add_argument("shopping_list", nargs="?", type=Path, default=Path("shoppingList.json"),
                          help="Sets the used shoppingList (defaults to 'shoppingList.json') which will be reused"
                          "to restock pastries from the shop.")
+stockParser.add_argument("-l", "--location",
+                         default="user",
+                         choices=["local", "user", "system"],
+                         help="Where to save the pastries to.")
 stockParser.set_defaults(func=execute_stock)
 
 # ServerParser

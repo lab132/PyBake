@@ -8,6 +8,7 @@ import pathlib
 from copy import deepcopy
 from importlib import import_module
 from PyBake.logger import log, LogBlock
+from werkzeug import secure_filename
 
 if __name__ == "__main__":
   raise RuntimeError("__init__.py is not supposed to be executed!")
@@ -17,6 +18,22 @@ version = {
   "Major" : 0,
   "Minor" : 1,
 }
+
+def try_getattr(obj, choices, default):
+  if not hasattr(obj, "__iter__"):
+    choices = [ choices ]
+  for attr in choices:
+    try:
+      return getattr(obj, attr)
+    except AttributeError:
+      continue
+  return default
+
+def safe_mkdir(path):
+  """Like `Path.mkdir`, except it is allowed to call this on an existing path."""
+  if not path.exists():
+    path.mkdir(parents=True)
+  return path
 
 recipes = []
 
@@ -207,13 +224,15 @@ class Pastry:
     self.version = version
     self.file = file
 
-  def as_path(self):
-    print("name", self.name)
-    print("version", self.version)
-    return Path(self.name) / "{}.zip".format(self.version)
-    #import base64
-    #encoded_path = base64.urlsafe_b64encode("{0.name}_{0.version}".format(self).encode("UTF-8"))
-    #return Path(encoded_path.decode("UTF-8"))
+  def path(self):
+    return Path(secure_filename("{}/{}".format(self.name, self.version)))
+
+  def server_data(self):
+    return dict(name=self.name, version=self.version)
+
+  @staticmethod
+  def from_dict(d):
+    return Pastry(name=d["name"], version=d["version"], file=None)
 
 class ShoppingList:
   """Describes the shop and the pastries needed for restocking."""
@@ -224,11 +243,12 @@ class ShoppingList:
     self.pastries = []
 
   @staticmethod
-  def FromJSON(jsonData):
+  def FromJSONFile(json_path):
     """Reads the shoppingList from a given json string"""
     with LogBlock("ShoppingList From Json"):
-      import json
-      data = json.loads(jsonData)
+      with json_path.open("r") as json_file:
+        import json
+        data = json.load(json_file)
 
       if "shop" not in data:
         log.error("No shop specified in the shoppingList!")
@@ -239,6 +259,9 @@ class ShoppingList:
 
       shoppingList = ShoppingList()
       shoppingList.serverConfig = ServerConfig.FromString(data["shop"])
+
+      for pastryDesc in data["pastries"]:
+        shoppingList.pastries.append(Pastry.from_dict(pastryDesc))
       return shoppingList
 
 
@@ -269,7 +292,7 @@ class MenuDiskDriver:
   def create_pastry(self, pastry):
     """Writes the given pastry to the disk"""
     with LogBlock("Writing Disk"):
-      pastry_path = MenuDiskDriver.pastries_root / pastry.as_path()
+      pastry_path = MenuDiskDriver.pastries_root / pastry.path()
       if not pastry_path.parent.exists():
         pastry_path.parent.mkdir(parents=True)
 
@@ -303,7 +326,7 @@ class MenuDiskDriver:
       # Get the menu entry for this pastry (name only) or a new list.
       known_versions = self.menu.get(pastry.name, {})
       if pastry.version not in known_versions:
-        known_versions.update({ pastry.version : pastry.as_path().as_posix() })
+        known_versions.update({ pastry.version : pastry.path().as_posix() })
       self.menu[pastry.name] = known_versions
       self.sync_menu()
 
