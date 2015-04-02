@@ -31,32 +31,29 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Folder Include="code\" />
-    <Folder Include="code\PyBake\" />
-    <Folder Include="code\PyBake\__pycache__\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="code\PyBake\__pycache__\oven.cpython-34.pyc" />
-    <Content Include="code\PyBake\__pycache__\__init__.cpython-34.pyc" />
-    <Content Include="code\PyBake\__pycache__\__main__.cpython-34.pyc" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="code\PyBake\depot.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="code\PyBake\logger.py" />
-    <Compile Include="code\PyBake\oven.py" />
-    <Compile Include="code\PyBake\shop.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="code\PyBake\stock.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="code\PyBake\__init__.py" />
-    <Compile Include="code\PyBake\__main__.py" />
-  </ItemGroup>
-  <ItemGroup>
     <InterpreterReference Include="{2af0f10d-7135-4994-9156-5d01c9c11b7e}\3.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="PyBake\" />
+    <Folder Include="PyBake\__pycache__\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="PyBake\VERSION" />
+    <Content Include="PyBake\__pycache__\depot.cpython-34.pyc" />
+    <Content Include="PyBake\__pycache__\logger.cpython-34.pyc" />
+    <Content Include="PyBake\__pycache__\shop.cpython-34.pyc" />
+    <Content Include="PyBake\__pycache__\stock.cpython-34.pyc" />
+    <Content Include="PyBake\__pycache__\__init__.cpython-34.pyc" />
+    <Content Include="PyBake\__pycache__\__main__.cpython-34.pyc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="PyBake\depot.py" />
+    <Compile Include="PyBake\logger.py" />
+    <Compile Include="PyBake\oven.py" />
+    <Compile Include="PyBake\shop.py" />
+    <Compile Include="PyBake\stock.py" />
+    <Compile Include="PyBake\__init__.py" />
+    <Compile Include="PyBake\__main__.py" />
   </ItemGroup>
   <Import Condition="Exists($(PtvsTargetsFile))" Project="$(PtvsTargetsFile)" />
   <Import Condition="!Exists($(PtvsTargetsFile))" Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
