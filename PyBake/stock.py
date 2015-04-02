@@ -18,14 +18,20 @@ def run(*, location, shopping_list=Path("shoppingList.json"), **kwargs):
 
     shoppingList = ShoppingList.FromJSONFile(shopping_list)
 
-    pastries_root = safe_mkdir(get_location_path(location) / ".pastries")
+    pastries_root = get_location_path(location) / ".pastries"
+    safe_mkdir(pastries_root, parents=True)
+    #menu = MenuBackend(driver=MenuDiskDriver())
 
     for pastry in shoppingList.pastries:
-      response = requests.post("{}/get_pastry".format(shoppingList.serverConfig), data=pastry.server_data(), stream=True)
-      log.info(response)
-      out_path = pastries_root / "{}.zip".format(pastry.path().as_posix())
-      log.info("Saving pastry to: {}".format(out_path.as_posix()))
-      with out_path.open("wb") as out_file:
-        chunk_size = 1024 * 4 # 4 KiB at a time.
-        for chunk in response.iter_content(chunk_size):
-          out_file.write(chunk)
+      with LogBlock("Requesting {}".format(pastry)):
+        response = requests.post("{}/get_pastry".format(shoppingList.serverConfig), data=pastry.server_data(), stream=True)
+        if response.status_code != requests.codes.ok:
+          log.error("Request failed:\n{}".format(response.text))
+          return
+        log.success("Pastry received.")
+        out_path = pastries_root / "{}.zip".format(pastry.path().as_posix())
+        log.info("Saving to: {}".format(out_path.as_posix()))
+        with out_path.open("wb") as out_file:
+          chunk_size = 1024 * 4 # 4 KiB at a time.
+          for chunk in response.iter_content(chunk_size):
+            out_file.write(chunk)

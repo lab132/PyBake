@@ -7,15 +7,14 @@ from flask import Flask, request, session, g, redirect, url_for, abort, \
 
 import json
 
-from PyBake import Path, MenuBackend
+from PyBake import Path, MenuBackend, MenuDiskDriver
 from PyBake.logger import log, LogBlock
 from importlib import import_module
 
-menuBackend = MenuBackend()
-
-
 def Shop(name=__name__):
   with LogBlock("Shop"):
+    menuBackend = MenuBackend(driver=MenuDiskDriver())
+
     # create our little application :)
     app = Flask(name)
 
@@ -95,16 +94,11 @@ def Shop(name=__name__):
           version = data["version"][0]
           pastry_path = menuBackend.get_pastry(errors, name, version)
 
-        if not pastry_path:
-          # TODO error handling => file not found.
-          pass
-
         if errors and len(errors) != 0:
-          returnCode = 400
           response["errors"] = errors
           response["result"] = "Error"
+          return jsonify(response), 400
 
-        #return jsonify(response), returnCode
         return send_from_directory(pastry_path.parent.as_posix(), pastry_path.name)
 
     return app

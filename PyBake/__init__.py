@@ -29,12 +29,6 @@ def try_getattr(obj, choices, default):
       continue
   return default
 
-def safe_mkdir(path):
-  """Like `Path.mkdir`, except it is allowed to call this on an existing path."""
-  if not path.exists():
-    path.mkdir(parents=True)
-  return path
-
 recipes = []
 
 def recipe(func):
@@ -185,7 +179,10 @@ class PastryJSONEncoder(json.JSONEncoder):
     return json.JSONEncoder.default(self, obj)
 
 Path = pathlib.Path
-
+def safe_mkdir(self, **kwargs):
+  """Like `Path.mkdir`, except it is allowed to call this on an existing path."""
+  if not self.exists():
+    self.mkdir(**kwargs)
 
 class ChangeDir:
   """
@@ -230,6 +227,12 @@ class Pastry:
   def server_data(self):
     return dict(name=self.name, version=self.version)
 
+  def __str__(self):
+    return "{} version {}".format(self.name, self.version)
+
+  def __repr__(self):
+    return "Pastry(name={}, version={})".format(self.name, self.version)
+
   @staticmethod
   def from_dict(d):
     return Pastry(name=d["name"], version=d["version"], file=None)
@@ -269,17 +272,16 @@ class ShoppingList:
 
 class MenuDiskDriver:
 
-  pastries_root = Path("pastries")
+  pastries_root = Path(".pastries")
 
-  def __init__(self):
+  def __init__(self, pastries_root=pastries_root):
     log.debug("Creating menu disk driver.")
     # Make sure the pastries dir exists
-    if not MenuDiskDriver.pastries_root.exists():
-      MenuDiskDriver.pastries_root.mkdir(parents=True)
-    MenuDiskDriver.pastries_root = MenuDiskDriver.pastries_root.resolve()
-    log.info("Pastries dir: {}".format(MenuDiskDriver.pastries_root.as_posix()))
+    safe_mkdir(self.pastries_root, parents=True)
+    self.pastries_root = self.pastries_root.resolve()
+    log.info("Pastries root: {}".format(self.pastries_root.as_posix()))
 
-    self.menu_path = MenuDiskDriver.pastries_root / "menu.json"
+    self.menu_path = self.pastries_root / "menu.json"
     if not self.menu_path.exists():
       if not self.menu_path.parent.exists():
         self.menu_path.parent.mkdir(mode=0o700, parents=True)
@@ -292,7 +294,7 @@ class MenuDiskDriver:
   def create_pastry(self, pastry):
     """Writes the given pastry to the disk"""
     with LogBlock("Writing Disk"):
-      pastry_path = MenuDiskDriver.pastries_root / pastry.path()
+      pastry_path = self.pastries_root / pastry.path()
       if not pastry_path.parent.exists():
         pastry_path.parent.mkdir(parents=True)
 
@@ -311,7 +313,7 @@ class MenuDiskDriver:
     with LogBlock("Get Pastry"):
       if self.has_pastry(name=name, version=version):
         log.info("Found pastry {} with version {} at {}".format(name,version,self.menu[name][version]))
-        return MenuDiskDriver.pastries_root / self.menu[name][version]
+        return self.pastries_root / self.menu[name][version]
       else:
         err = "Could not find pastry '{}' with version '{}'".format(name,version)
         log.error(err)
@@ -338,8 +340,9 @@ class MenuDiskDriver:
 
 
 class MenuBackend:
-  def __init__(self, driver=MenuDiskDriver()):
+  def __init__(self, driver):
     log.debug("Creating menu backend.")
+    assert driver, "Need valid Menu driver instance."
     self.driver = driver
 
   def process_pastry(self, pastry_name, pastry_version, pastry_files):
@@ -347,9 +350,9 @@ class MenuBackend:
     import zipfile
     with LogBlock("Backend Pastry Processing {} File(s)".format(num_files)):
       for pastry_file in pastry_files:
-        pastry = Pastry(pastry_name,
-                        pastry_version,
-                        pastry_file)
+        pastry = Pastry(name=pastry_name,
+                        version=pastry_version,
+                        file=pastry_file)
         self.driver.create_pastry(pastry)
 
   def get_pastry(self, errors, pastry_name, pastry_version):
