@@ -129,8 +129,8 @@ depotParser.set_defaults(func=execute_depot)
 
 stockParser = subparsers.add_parser("stock", help=stockDescription, description=stockDescription)
 
-stockParser.add_argument("shopping_list", nargs="?", type=Path, default=Path("shoppingList.json"),
-                         help="Sets the used shoppingList (defaults to 'shoppingList.json') which will be reused"
+stockParser.add_argument("shopping_list", nargs="?", default="shoppingList",
+                         help="Sets the used shoppingList (defaults to 'shoppingList') which will be reused"
                          "to restock pastries from the shop.")
 stockParser.add_argument("-l", "--location",
                          default="user",

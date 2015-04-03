@@ -30,15 +30,15 @@ with open(path.join(here, "VERSION"), encoding="UTF-8") as f:
     for key in version:
       version[key] = int(versionMatch.group(key))
 
-def try_getattr(obj, choices, default):
-  if not hasattr(obj, "__iter__"):
-    choices = [ choices ]
+def try_getattr(obj, choices, default_value=None, raise_error=False):
   for attr in choices:
     try:
       return getattr(obj, attr)
     except AttributeError:
       continue
-  return default
+  if raise_error:
+    raise AttributeError("Unable to find attribute with any of these names: {}".format(choices))
+  return default_value
 
 recipes = []
 
@@ -49,13 +49,21 @@ def recipe(func):
 
 class ServerConfig:
   """docstring"""
-  def __init__(self, *, host, port=1337, protocol="http"):
-    self.host = host
-    self.port = port
-    self.protocol = protocol
 
-  @staticmethod
-  def FromString(string):
+  port_lookup = {
+    "http" : 80,
+    "https" : 443
+  }
+
+  def __init__(self, host_str=None, *, host=None, port=None, protocol="http"):
+    if host_str:
+      self.fromString(host_str)
+    else:
+      self.host = host
+      self.protocol = protocol
+      self.port = port or ServerConfig.port_lookup[self.protocol]
+
+  def fromString(self, string):
     """Creates a server configuration from a given <protocol>://<address>:<port> string"""
 
     with LogBlock("ServerConfig From String"):
@@ -98,12 +106,17 @@ class ServerConfig:
       log.info(match)
       matchDict = match.groupdict()
       port = matchDict.get("port", None)
+      protocol = matchDict.get("protocol", "default")
       if port is not None:
         port = int(port)
-        log.info("Port is {}".format(port))
-      else:
-        log.info("No port given in url")
-      return ServerConfig(host=matchDict["address"], port=port, protocol=matchDict.get("protocol", "http"))
+      elif protocol in ServerConfig.port_lookup:
+        log.info("No port given in url, using default from protocol.")
+        port = ServerConfig.port_lookup[protocol]
+
+      log.info("Port is {}".format(port))
+      self.host = matchDict["address"]
+      self.port = port
+      self.protocol = protocol
 
   def __str__(self):
     return "{}://{}:{}".format(self.protocol, self.host, self.port)
@@ -189,10 +202,12 @@ class PastryJSONEncoder(json.JSONEncoder):
     return json.JSONEncoder.default(self, obj)
 
 Path = pathlib.Path
+
 def safe_mkdir(self, **kwargs):
   """Like `Path.mkdir`, except it is allowed to call this on an existing path."""
   if not self.exists():
     self.mkdir(**kwargs)
+setattr(Path, "safe_mkdir", safe_mkdir)
 
 class ChangeDir:
   """
@@ -270,7 +285,7 @@ class ShoppingList:
         return None
 
       shoppingList = ShoppingList()
-      shoppingList.serverConfig = ServerConfig.FromString(data["shop"])
+      shoppingList.serverConfig = ServerConfig(data["shop"])
 
       for pastryDesc in data["pastries"]:
         shoppingList.pastries.append(Pastry.from_dict(pastryDesc))
@@ -286,7 +301,7 @@ class MenuDiskDriver:
   def __init__(self, pastries_root=pastries_root):
     log.debug("Creating menu disk driver.")
     # Make sure the pastries dir exists
-    safe_mkdir(self.pastries_root, parents=True)
+    self.pastries_root.safe_mkdir(parents=True)
     self.pastries_root = self.pastries_root.resolve()
     log.info("Pastries root: {}".format(self.pastries_root.as_posix()))
 

@@ -1,6 +1,7 @@
 """The place to get your daily pastries!"""
 from PyBake import *
 from os.path import expanduser
+from importlib import import_module
 
 def get_location_path(loc):
   """Return a (resolved) path to the actual location on disk. `loc` must bei one of {"local", "system", "user"}."""
@@ -22,20 +23,21 @@ def progress_listener(max_size):
   return on_progress
 
 
-def run(*, location, shopping_list=Path("shoppingList.json"), **kwargs):
+def run(*, location, shopping_list="shoppingList", **kwargs):
   """Restocks pastries from the shop using the shopping list"""
   with LogBlock("Stock Exchange"):
     import requests
 
-    shoppingList = ShoppingList.FromJSONFile(shopping_list)
+    shopping_list = import_module(shopping_list)
+    server_config = try_getattr(shopping_list, ("server_config", "server"), raise_error=True)
+    pastries = try_getattr(shopping_list, ("pastries", "pastry"), raise_error=True)
 
     pastries_root = get_location_path(location) / ".pastries"
-    safe_mkdir(pastries_root, parents=True)
-    #menu = MenuBackend(driver=MenuDiskDriver())
+    pastries_root.safe_mkdir(parents=True)
 
-    for pastry in shoppingList.pastries:
+    for pastry in pastries:
       with LogBlock("Requesting {}".format(pastry)):
-        response = requests.post("{}/get_pastry".format(shoppingList.serverConfig),
+        response = requests.post("{}/get_pastry".format(server_config),
                                  data=pastry.server_data(),
                                  stream=True)
         if response.status_code != requests.codes.ok:
