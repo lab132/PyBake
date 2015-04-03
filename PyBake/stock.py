@@ -31,7 +31,7 @@ def run(*, location, shopping_list=Path("shoppingList.json"), **kwargs):
           log.error("Request failed:\n{}".format(response.text))
           return
         log.success("Pastry received.")
-        out_path = pastries_root / "{}.zip".format(pastry.path().as_posix())
+        out_path = pastries_root / pastry.path()
         log.info("Saving to: {}".format(out_path.as_posix()))
         with out_path.open("wb") as out_file:
           chunk_size = 1024 * 4 # 4 KiB at a time.

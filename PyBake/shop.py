@@ -98,7 +98,7 @@ def Shop(name=__name__):
           response["errors"] = errors
           response["result"] = "Error"
           return jsonify(response), 400
-
+        log.info("Sending file: {}".format(pastry_path.as_posix()))
         return send_from_directory(pastry_path.parent.as_posix(), pastry_path.name)
 
     return app

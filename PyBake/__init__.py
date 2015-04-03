@@ -232,7 +232,7 @@ class Pastry:
     self.file = file
 
   def path(self):
-    return Path(secure_filename("{}/{}".format(self.name, self.version)))
+    return Path(secure_filename("{}/{}.zip".format(self.name, self.version)))
 
   def server_data(self):
     return dict(name=self.name, version=self.version)
@@ -321,10 +321,10 @@ class MenuDiskDriver:
     """Fetches a readable object of the pastry from the disk if it exists otherwise returns None."""
     with LogBlock("Get Pastry"):
       if self.has_pastry(name=name, pastry_version=pastry_version):
-        log.info("Found pastry {} with version {} at {}".format(name, version, self.menu[name][version]))
-        return self.pastries_root / self.menu[name][version]
+        log.info("Found pastry {} with version {} at {}".format(name, pastry_version, self.menu[name][pastry_version]))
+        return self.pastries_root / self.menu[name][pastry_version]
       else:
-        err = "Could not find pastry '{}' with version '{}'".format(name, version)
+        err = "Could not find pastry '{}' with version '{}'".format(name, pastry_version)
         log.error(err)
         errors.append(err)
         return None

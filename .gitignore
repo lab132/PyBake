@@ -187,7 +187,7 @@ publish/
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml
-# TODO: Comment the next line if you want to checkin your web deploy settings 
+# TODO: Comment the next line if you want to checkin your web deploy settings
 # but database connection strings (with potential passwords) will be unencrypted
 *.pubxml
 *.publishproj
@@ -255,4 +255,5 @@ FakesAssemblies/
 
 *.sublime-project
 *.sublime-workspace
-shop/
+
+.pastries
