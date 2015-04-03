@@ -10,6 +10,7 @@ from importlib import import_module
 from PyBake.logger import log, LogBlock
 from werkzeug.utils import secure_filename
 from os import path
+import re
 
 if __name__ == "__main__":
   raise RuntimeError("__init__.py is not supposed to be executed!")
@@ -24,7 +25,6 @@ version = {
 
 with open(path.join(here, "VERSION"), encoding="UTF-8") as f:
   versionString = f.read().strip()
-  import re
   versionMatch = re.search(r"(?P<Major>\d+)\.(?P<Minor>\d+)\.(?P<Patch>\d+)", versionString)
   if versionMatch:
     for key in version:
@@ -59,43 +59,42 @@ class ServerConfig:
     """Creates a server configuration from a given <protocol>://<address>:<port> string"""
 
     with LogBlock("ServerConfig From String"):
-      import re
       # Ported from https://gist.github.com/dperini/729294
       # Re-enabled local ip addresses
-      urlMatch=(r"^"
-                # protocol identifier
-                r"(?:(?P<protocol>https?)://)"
-                # user:pass authentication
-                r"(?:(?P<user>\S+)(?::(?P<password>\S*))?@)?"
-                r"(?P<address>"
-                # IP address exclusion
-                # private & local networks
-                #"(?!(?:10|127)(?:\.\d{1,3}){3})"
-                #"(?!(?:169\\.254|192\.168)(?:\.\d{1,3}){2})"
-                #"(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})"
-                # IP address dotted notation octets
-                # excludes network & broacast addresses
-                # (first & last IP address of each class)
-                r"(?:[0-9]\d?|1\d\d|2[0-4]\d|25[0-5])"
-                r"(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}"
-                r"(?:\.(?:[0-9]\d?|1\d\d|2[0-4]\d|25[0-4]))"
-                r"|"
-                # host name
-                r"(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)"
-                # domain name
-                r"(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*"
-                # TLD identifier
-                r"(?:\.(?:[a-z\u00a1-\uffff]{2,}))"
-                r")"
-                # port number
-                r"(?::(?P<port>\d{2,5}))?"
-                # resource path
-                r"(?P<resource_path>/\S*)?"
-                r"$")
+      urlMatch = (r"^"
+                  # protocol identifier
+                  r"(?:(?P<protocol>https?)://)"
+                  # user:pass authentication
+                  r"(?:(?P<user>\S+)(?::(?P<password>\S*))?@)?"
+                  r"(?P<address>"
+                  # IP address exclusion
+                  # private & local networks
+                  #"(?!(?:10|127)(?:\.\d{1,3}){3})"
+                  #"(?!(?:169\\.254|192\.168)(?:\.\d{1,3}){2})"
+                  #"(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})"
+                  # IP address dotted notation octets
+                  # excludes network & broacast addresses
+                  # (first & last IP address of each class)
+                  r"(?:[0-9]\d?|1\d\d|2[0-4]\d|25[0-5])"
+                  r"(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}"
+                  r"(?:\.(?:[0-9]\d?|1\d\d|2[0-4]\d|25[0-4]))"
+                  r"|"
+                  # host name
+                  r"(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)"
+                  # domain name
+                  r"(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*"
+                  # TLD identifier
+                  r"(?:\.(?:[a-z\u00a1-\uffff]{2,}))"
+                  r")"
+                  # port number
+                  r"(?::(?P<port>\d{2,5}))?"
+                  # resource path
+                  r"(?P<resource_path>/\S*)?"
+                  r"$")
       match = re.match(urlMatch, string)
       if match is None:
-          log.error("Could not match given string as an url")
-          return None
+        log.error("Could not match given string as an url")
+        return None
       log.info(match)
       matchDict = match.groupdict()
       port = matchDict.get("port", None)
@@ -162,8 +161,8 @@ Platform.All = Platform(name="all")
 
 class Ingredient:
   """A wrapper for an existing file that has tags attached to it."""
-  def __init__(self, path, *, tags={}):
-    self.path = path
+  def __init__(self, ingredient_path, *, tags={}):
+    self.path = ingredient_path
     self.tags = tags
 
   def __str__(self):
@@ -202,10 +201,10 @@ class ChangeDir:
     with ChangeDir('some/dir'):
       pass
   """
-  def __init__(self, path):
+  def __init__(self, target_path):
     self.previous = Path.cwd()
     try:
-      self.current = Path(path).resolve()
+      self.current = Path(target_path).resolve()
       assert self.current.is_dir()
     except FileNotFoundError as ex:
       log.error("Cannot change into directory:")
@@ -227,9 +226,9 @@ class ChangeDir:
     os.chdir(self.previous.as_posix())
 
 class Pastry:
-  def __init__(self, name, version, file):
+  def __init__(self, name, pastry_version, file):
     self.name = name
-    self.version = version
+    self.version = pastry_version
     self.file = file
 
   def path(self):
@@ -246,7 +245,7 @@ class Pastry:
 
   @staticmethod
   def from_dict(d):
-    return Pastry(name=d["name"], version=d["version"], file=None)
+    return Pastry(name=d["name"], pastry_version=d["version"], file=None)
 
 class ShoppingList:
   """Describes the shop and the pastries needed for restocking."""
@@ -261,7 +260,6 @@ class ShoppingList:
     """Reads the shoppingList from a given json string"""
     with LogBlock("ShoppingList From Json"):
       with json_path.open("r") as json_file:
-        import json
         data = json.load(json_file)
 
       if "shop" not in data:
@@ -314,19 +312,19 @@ class MenuDiskDriver:
       pastry.file.save(pastry_path.as_posix())
       self.add_to_menu(pastry)
 
-  def has_pastry(self, *, name, version, **kwargs):
+  def has_pastry(self, *, name, pastry_version, **kwargs):
     """Checks if the menu contains a given pastry"""
     log.info("menu: {}".format(self.menu))
-    return name in self.menu and version in self.menu[name]
+    return name in self.menu and pastry_version in self.menu[name]
 
-  def get_pastry(self, errors, name, version):
+  def get_pastry(self, errors, name, pastry_version):
     """Fetches a readable object of the pastry from the disk if it exists otherwise returns None."""
     with LogBlock("Get Pastry"):
-      if self.has_pastry(name=name, version=version):
-        log.info("Found pastry {} with version {} at {}".format(name,version,self.menu[name][version]))
+      if self.has_pastry(name=name, pastry_version=pastry_version):
+        log.info("Found pastry {} with version {} at {}".format(name, version, self.menu[name][version]))
         return self.pastries_root / self.menu[name][version]
       else:
-        err = "Could not find pastry '{}' with version '{}'".format(name,version)
+        err = "Could not find pastry '{}' with version '{}'".format(name, version)
         log.error(err)
         errors.append(err)
         return None
@@ -339,7 +337,7 @@ class MenuDiskDriver:
       # Get the menu entry for this pastry (name only) or a new list.
       known_versions = self.menu.get(pastry.name, {})
       if pastry.version not in known_versions:
-        known_versions.update({ pastry.version : pastry.path().as_posix() })
+        known_versions.update({pastry.version : pastry.path().as_posix()})
       self.menu[pastry.name] = known_versions
       self.sync_menu()
 
@@ -358,11 +356,10 @@ class MenuBackend:
 
   def process_pastry(self, pastry_name, pastry_version, pastry_files):
     num_files = len(pastry_files)
-    import zipfile
     with LogBlock("Backend Pastry Processing {} File(s)".format(num_files)):
       for pastry_file in pastry_files:
         pastry = Pastry(name=pastry_name,
-                        version=pastry_version,
+                        pastry_version=pastry_version,
                         file=pastry_file)
         self.driver.create_pastry(pastry)
 

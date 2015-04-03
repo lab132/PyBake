@@ -95,7 +95,7 @@ ovenParser.add_argument("pastry_name",
 ovenParser.add_argument("pastry_version",
                         type=str,
                         help="The version of the crumble.")
-ovenParser.add_argument("-r", "--recipe", type=str, default="recipe",
+ovenParser.add_argument("-r", "--recipe", type=str, default="recipe", dest="recipe_name",
                         help="Name of the recipe module. "
                         "This module is expected to live directly in the working directory, "
                         "not any sub-directory, with the name `<RECIPE>.py`.")
@@ -118,7 +118,7 @@ depotParser.add_argument("pastry_path",
                          default=Path("pastry.zip"),
                          help="Path to the pastry file (defaults to \"./pastry.zip\").")
 
-depotParser.add_argument("-c" , "--config",
+depotParser.add_argument("-c", "--config",
                          default="config",
                          help="Name of the python module containing configuration data. "
                          "This file must exist in the working directory. (defaults to \"config\").")

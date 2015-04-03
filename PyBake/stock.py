@@ -6,7 +6,7 @@ def get_location_path(loc):
   """Return a (resolved) path to the actual location on disk. `loc` must bei one of {"local", "system", "user"}."""
   if loc == "system":
     assert False, "Not supported yet."
-  lookup = { "local" : Path.cwd(), "user" : Path(expanduser("~")) }
+  lookup = {"local" : Path.cwd(), "user" : Path(expanduser("~"))}
 
   return lookup[loc]
 
@@ -24,7 +24,9 @@ def run(*, location, shopping_list=Path("shoppingList.json"), **kwargs):
 
     for pastry in shoppingList.pastries:
       with LogBlock("Requesting {}".format(pastry)):
-        response = requests.post("{}/get_pastry".format(shoppingList.serverConfig), data=pastry.server_data(), stream=True)
+        response = requests.post("{}/get_pastry".format(shoppingList.serverConfig),
+                                 data=pastry.server_data(),
+                                 stream=True)
         if response.status_code != requests.codes.ok:
           log.error("Request failed:\n{}".format(response.text))
           return

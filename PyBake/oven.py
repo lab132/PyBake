@@ -10,7 +10,6 @@ import zipfile
 class JSONBaker:
   """Simply serializes all ingredients as JSON to the given file."""
   def __init__(self, filepath, pastry_name, pastry_version, options):
-    super(JSONBaker, self).__init__(*args, **kwargs)
     self.filepath = filepath
     self.pastry_name = pastry_name
     self.pastry_version = pastry_version
@@ -89,8 +88,8 @@ def run(*,                    # Keyword arguments only.
         pastry_name,          # The name of the pastry.
         pastry_version,       # The version-string of the pastry.
         working_dir,          # Working directory in which to look for and execute the `recipe`
-        recipe,               # The recipe to load, which provides ingredients.
-        output,               # The target file specified by the user, e.g. a ZIP file. Relative to the original working dir.
+        recipe_name,          # The name of the recipe to load, which provides ingredients.
+        output,               # The target file e.g. a ZIP file. Relative to the original working dir.
         baker_class=ZipBaker, # Processes ingredients and creates a pastry.
         **kwargs):            # kwargs passed as `options` to the `baker_function`.
   with LogBlock("Oven"):
@@ -102,10 +101,10 @@ def run(*,                    # Keyword arguments only.
     # Change into the working directory given by the user.
     with ChangeDir(working_dir):
       log.debug("Working dir for recipe: {}".format(working_dir.as_posix()))
-      log.info("Processing recipe '{0}'".format(recipe))
+      log.info("Processing recipe '{0}'".format(recipe_name))
 
       # Load the recipe, which will register some handlers that yield ingredients.
-      import_module(recipe)
+      import_module(recipe_name)
       if len(recipes) == 0:
         log.error("No recipes found. Make sure to create functions and decorate them with @recipe.")
         return
