@@ -4,6 +4,7 @@ Logging facility of our bakery
 
 import sys
 from enum import IntEnum, unique
+from clint.textui.progress import Bar as ProgressBar
 
 
 @unique
@@ -45,6 +46,7 @@ class LogBackend:
     self.verbosity = verbosity
     self.quiet = quiet
     self.blockStack = []
+    self.progress_bar = None
 
     def create_log_message_function(value):
       return lambda self, message: self.log_message(value, message)
@@ -79,6 +81,22 @@ class LogBackend:
       self.blockStack.pop()
     else:
       raise ValueError("The given block is not the last Element in the stack!")
+
+  def start_progress(self, expected_size, progress_char="="):
+    """Creates a progress bar"""
+    self.progress_bar = ProgressBar(expected_size=expected_size, filled_char=progress_char)
+
+  def set_progress(self, progress):
+    """Sets the progress of the bar if any"""
+    if self.progress_bar:
+      self.progress_bar.show(progress)
+
+  def end_progress(self):
+    """Completes the progress"""
+    if self.progress_bar:
+      self.progress_bar.done()
+      self.progress_bar = None
+
 
   def log_message(self, verbosity, message):
     if not self.quiet and verbosity <= self.verbosity:
