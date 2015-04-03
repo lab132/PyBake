@@ -8,7 +8,7 @@ import pathlib
 from copy import deepcopy
 from importlib import import_module
 from PyBake.logger import log, LogBlock
-from werkzeug import secure_filename
+from werkzeug.utils import secure_filename
 from os import path
 
 if __name__ == "__main__":
