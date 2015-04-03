@@ -10,6 +10,17 @@ def get_location_path(loc):
 
   return lookup[loc]
 
+def progress_listener(max_size):
+  max_size = max_size / (1024 * 1024)
+  log.start_progress(max_size, bar_template="%s[%s%s] %i/%i MiB - %s\r")
+  def on_progress(size):
+    if size:
+      log.set_progress(size / (1024 * 1024))
+    else:
+      log.set_progress(max_size)
+      log.end_progress()
+  return on_progress
+
 
 def run(*, location, shopping_list=Path("shoppingList.json"), **kwargs):
   """Restocks pastries from the shop using the shopping list"""
@@ -30,10 +41,22 @@ def run(*, location, shopping_list=Path("shoppingList.json"), **kwargs):
         if response.status_code != requests.codes.ok:
           log.error("Request failed:\n{}".format(response.text))
           return
-        log.success("Pastry received.")
+
+        size = 1024
+        if "content-length" in response.headers:
+          size = int(response.headers["content-length"])
+
         out_path = pastries_root / pastry.path()
         log.info("Saving to: {}".format(out_path.as_posix()))
+
+        listener = progress_listener(size)
+
         with out_path.open("wb") as out_file:
           chunk_size = 1024 * 4 # 4 KiB at a time.
+          bytes_written = 0
           for chunk in response.iter_content(chunk_size):
             out_file.write(chunk)
+            bytes_written += chunk_size
+            listener(bytes_written)
+        listener(None)
+        log.success("Pastry received.")

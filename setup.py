@@ -44,7 +44,8 @@ setup(
     'flask',
     'argparse',
     'watchdog',
-    'requests'
+    'requests',
+    'clint'
     ],
   package_data={
     "PyBake": ["VERSION"]
