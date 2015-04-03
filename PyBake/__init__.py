@@ -9,15 +9,26 @@ from copy import deepcopy
 from importlib import import_module
 from PyBake.logger import log, LogBlock
 from werkzeug import secure_filename
+from os import path
 
 if __name__ == "__main__":
   raise RuntimeError("__init__.py is not supposed to be executed!")
 
+here = path.abspath(path.dirname(__file__))
+
 version = {
-  "Release" : 0,
   "Major" : 0,
-  "Minor" : 1,
+  "Minor" : 0,
+  "Patch" : 0,
 }
+
+with open(path.join(here, "VERSION"), encoding="UTF-8") as f:
+  versionString = f.read().strip()
+  import re
+  versionMatch = re.search(r"(?P<Major>\d+)\.(?P<Minor>\d+)\.(?P<Patch>\d+)", versionString)
+  if versionMatch:
+    for key in version:
+      version[key] = int(versionMatch.group(key))
 
 def try_getattr(obj, choices, default):
   if not hasattr(obj, "__iter__"):
