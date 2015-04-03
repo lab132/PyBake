@@ -29,7 +29,7 @@ ovenDescription = textwrap.dedent(
   Tool to create crumbles.
   """)
 
-stockDescription = textwrap.dedent(
+basketDescription = textwrap.dedent(
   """
   Retrieves pastries from the shop.
   """)
@@ -51,10 +51,10 @@ def execute_shop(args):
   from PyBake import shop
   shop.run(**vars(args))
 
-def execute_stock(args):
+def execute_basket(args):
   log.debug(args)
-  from PyBake import stock
-  stock.run(**vars(args))
+  from PyBake import basket
+  basket.run(**vars(args))
 
 def execute_oven(args):
   log.info("Executing oven")
@@ -127,16 +127,16 @@ depotParser.set_defaults(func=execute_depot)
 # StockParser
 # ============
 
-stockParser = subparsers.add_parser("stock", help=stockDescription, description=stockDescription)
+basketParser = subparsers.add_parser("basket", help=basketDescription, description=basketDescription)
 
-stockParser.add_argument("shopping_list", nargs="?", default="shoppingList",
+basketParser.add_argument("shopping_list", nargs="?", default="shoppingList",
                          help="Sets the used shoppingList (defaults to 'shoppingList') which will be reused"
-                         "to restock pastries from the shop.")
-stockParser.add_argument("-l", "--location",
+                         "to retrieve pastries from the shop.")
+basketParser.add_argument("-l", "--location",
                          default="user",
                          choices=["local", "user", "system"],
                          help="Where to save the pastries to.")
-stockParser.set_defaults(func=execute_stock)
+basketParser.set_defaults(func=execute_basket)
 
 # ServerParser
 # ====

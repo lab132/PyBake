@@ -263,7 +263,7 @@ class Pastry:
     return Pastry(name=d["name"], pastry_version=d["version"], file=None)
 
 class ShoppingList:
-  """Describes the shop and the pastries needed for restocking."""
+  """Describes the shop and the pastries needed for rebasketing."""
 
   def __init__(self):
     """Creates a default localhost config with no pastries"""

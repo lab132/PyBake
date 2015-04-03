@@ -24,7 +24,7 @@ def progress_listener(max_size):
 
 
 def run(*, location, shopping_list="shoppingList", **kwargs):
-  """Gets pastries from the shop using the shopping list"""
+  """Restocks pastries from the shop using the shopping list"""
   with LogBlock("Stock Exchange"):
     import requests
 
