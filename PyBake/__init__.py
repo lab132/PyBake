@@ -174,7 +174,7 @@ class Platform:
   All = None  # Is initialized after the declaration of this class
 
   @staticmethod
-  def FromDict(desc):
+  def fromDict(desc):
     """Extracts data from a dictionary and instanciates a `Platform` instance from that."""
     result = Platform()
     result.name = desc.get("name", result.name)
@@ -214,6 +214,7 @@ class Ingredient:
 class PastryJSONEncoder(json.JSONEncoder):
   """JSON Encoder that can handle PyBake classes."""
 
+  # pylint: disable=E0202
   def default(self, obj):
     """Called in the process of serializing python data structures to JSON."""
     if isinstance(obj, Platform):
@@ -305,7 +306,7 @@ class ShoppingList:
     self.pastries = []
 
   @staticmethod
-  def FromJSONFile(json_path):
+  def fromJSONFile(json_path):
     """Reads the shoppingList from a given json string"""
     with LogBlock("ShoppingList From Json"):
       with json_path.open("r") as json_file:

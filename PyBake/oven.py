@@ -99,6 +99,7 @@ def run(*,                     # Keyword arguments only.
         output,                # The target file e.g. a ZIP file. Relative to the original working dir.
         baker_class=ZipBaker,  # Processes ingredients and creates a pastry.
         **kwargs):             # kwargs passed as `options` to the `baker_function`.
+  """Run the oven command."""
   with LogBlock("Oven"):
     # Make sure the working dir exists.
     working_dir = working_dir.resolve()
