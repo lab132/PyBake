@@ -417,3 +417,38 @@ class MenuBackend:
     """Gets a pastry from the menu, if it exists"""
     log.info("pastry_data: {0} version {1}".format(pastry_name, pastry_version))
     return self.driver.get_pastry(errors, pastry_name, pastry_version)
+
+class Menu:
+  """Pastry management."""
+
+  defaultDirName = ".pastries"
+
+  defaultLocations = {
+    "local": ".",
+    "user": "~",
+    "system": "",
+  }
+
+  def __init__(self, *args):
+    ...
+
+  def add(self, pastry):
+    """
+    Add a pastry to the menu.
+    """
+
+  def get(self, pastry):
+    """
+    Get a pastry from the menu.
+    """
+
+    ...
+
+    # No pastry found.
+    return None
+
+  def exists(self, pastry):
+    """
+    Whether a given `pastry` exists or not.
+    """
+    return self.get(pastry) is not None
