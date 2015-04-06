@@ -11,6 +11,7 @@ from PyBake.logger import log, LogBlock
 from werkzeug.utils import secure_filename
 from os import path
 import re
+import json
 
 if __name__ == "__main__":
   raise RuntimeError("__init__.py is not supposed to be executed!")
@@ -18,9 +19,9 @@ if __name__ == "__main__":
 here = path.abspath(path.dirname(__file__))
 
 version = {
-  "Major" : 0,
-  "Minor" : 0,
-  "Patch" : 0,
+  "Major": 0,
+  "Minor": 0,
+  "Patch": 0,
 }
 
 with open(path.join(here, "VERSION"), encoding="UTF-8") as f:
@@ -30,7 +31,15 @@ with open(path.join(here, "VERSION"), encoding="UTF-8") as f:
     for key in version:
       version[key] = int(versionMatch.group(key))
 
+
 def try_getattr(obj, choices, default_value=None, raise_error=False):
+  """
+  Try `getattr` on `obj`, querying for everything in `choices`,
+  which may also be only a single value.
+
+  If `raise_error` is `True`, and no attributes could be found,
+  an AttributeError is raised. Otherwise `default_value` is returned.
+  """
   for attr in choices:
     try:
       return getattr(obj, attr)
@@ -40,19 +49,24 @@ def try_getattr(obj, choices, default_value=None, raise_error=False):
     raise AttributeError("Unable to find attribute with any of these names: {}".format(choices))
   return default_value
 
+
 recipes = []
 
+
 def recipe(func):
+  """
+  Decorator function used to collect all recipes for the `oven` command within a given user script.
+  """
   recipes.append(func)
   return func
 
 
 class ServerConfig:
-  """docstring"""
+  """Helper class that stores server configuration infos."""
 
   port_lookup = {
-    "http" : 80,
-    "https" : 443
+    "http": 80,
+    "https": 443
   }
 
   def __init__(self, host_str=None, *, host=None, port=None, protocol="http"):
@@ -77,9 +91,9 @@ class ServerConfig:
                   r"(?P<address>"
                   # IP address exclusion
                   # private & local networks
-                  #"(?!(?:10|127)(?:\.\d{1,3}){3})"
-                  #"(?!(?:169\\.254|192\.168)(?:\.\d{1,3}){2})"
-                  #"(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})"
+                  # "(?!(?:10|127)(?:\.\d{1,3}){3})"
+                  # "(?!(?:169\\.254|192\.168)(?:\.\d{1,3}){2})"
+                  # "(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})"
                   # IP address dotted notation octets
                   # excludes network & broacast addresses
                   # (first & last IP address of each class)
@@ -137,6 +151,7 @@ class Platform:
     self.user_data = user_data
 
   def isValid(self):
+    """A platform is valid if it has either a `name` or a `detailed_name`."""
     return self.name is not None or self.detailed_name is not None
 
   def __str__(self):
@@ -160,6 +175,7 @@ class Platform:
 
   @staticmethod
   def FromDict(desc):
+    """Extracts data from a dictionary and instanciates a `Platform` instance from that."""
     result = Platform()
     result.name = desc.get("name", result.name)
     result.detailed_name = desc.get("detailed_name", result.detailed_name)
@@ -174,6 +190,7 @@ Platform.All = Platform(name="all")
 
 class Ingredient:
   """A wrapper for an existing file that has tags attached to it."""
+
   def __init__(self, ingredient_path, *, tags={}):
     self.path = ingredient_path
     self.tags = tags
@@ -189,25 +206,32 @@ class Ingredient:
     yield ("tags", self.tags,)
 
   def make_relative_to(self, root):
+    """Makes the path of the ingredient relative to `root`. `root` must be an absolute path."""
     if self.path.is_absolute():
       self.path = self.path.relative_to(root)
 
-import json
+
 class PastryJSONEncoder(json.JSONEncoder):
+  """JSON Encoder that can handle PyBake classes."""
+
   def default(self, obj):
+    """Called in the process of serializing python data structures to JSON."""
     if isinstance(obj, Platform):
       return dict(obj)
     if isinstance(obj, Ingredient):
       return dict(obj)
     return json.JSONEncoder.default(self, obj)
 
+
 Path = pathlib.Path
+
 
 def safe_mkdir(self, **kwargs):
   """Like `Path.mkdir`, except it is allowed to call this on an existing path."""
   if not self.exists():
     self.mkdir(**kwargs)
 setattr(Path, "safe_mkdir", safe_mkdir)
+
 
 class ChangeDir:
   """
@@ -216,6 +240,7 @@ class ChangeDir:
     with ChangeDir('some/dir'):
       pass
   """
+
   def __init__(self, target_path):
     self.previous = Path.cwd()
     try:
@@ -229,27 +254,34 @@ class ChangeDir:
   def __enter__(self):
     self.enter()
 
-  def __exit__(self, type, value, traceback):
+  def __exit__(self, theType, value, traceback):
     self.exit()
 
   def enter(self):
+    """Enter the given directory. Should not be called manually, use `with` instead."""
     import os
     os.chdir(self.current.as_posix())
 
   def exit(self):
+    """Exit the given directory. Should not be called manually, use `with` instead."""
     import os
     os.chdir(self.previous.as_posix())
 
+
 class Pastry:
+  """Describes a pastry (a package)."""
+
   def __init__(self, name, pastry_version, file):
     self.name = name
     self.version = pastry_version
     self.file = file
 
   def path(self):
+    """Return the path of this pastry."""
     return Path(secure_filename("{}/{}.zip".format(self.name, self.version)))
 
-  def server_data(self):
+  def shop_data(self):
+    """Returns a dictionary containing all relevent data the shop (server) needs."""
     return dict(name=self.name, version=self.version)
 
   def __str__(self):
@@ -259,8 +291,10 @@ class Pastry:
     return "Pastry(name={}, version={})".format(self.name, self.version)
 
   @staticmethod
-  def from_dict(d):
-    return Pastry(name=d["name"], pastry_version=d["version"], file=None)
+  def from_dict(desc):
+    """Extract data from a dictionary and instanciate a `Pastry` instance from that."""
+    return Pastry(name=desc["name"], pastry_version=desc["version"], file=None)
+
 
 class ShoppingList:
   """Describes the shop and the pastries needed for rebasketing."""
@@ -292,9 +326,8 @@ class ShoppingList:
       return shoppingList
 
 
-
-
 class MenuDiskDriver:
+  """Menu handling on a harddisk drive, as opposed to a database or a remote connection."""
 
   pastries_root = Path(".pastries")
 
@@ -344,7 +377,6 @@ class MenuDiskDriver:
         errors.append(err)
         return None
 
-
   def add_to_menu(self, pastry):
     """Adds a new pastry to the menu"""
     with LogBlock("Add To Menu"):
@@ -352,7 +384,7 @@ class MenuDiskDriver:
       # Get the menu entry for this pastry (name only) or a new list.
       known_versions = self.menu.get(pastry.name, {})
       if pastry.version not in known_versions:
-        known_versions.update({pastry.version : pastry.path().as_posix()})
+        known_versions.update({pastry.version: pastry.path().as_posix()})
       self.menu[pastry.name] = known_versions
       self.sync_menu()
 
@@ -364,12 +396,15 @@ class MenuDiskDriver:
 
 
 class MenuBackend:
+  """Manages locally available pastries."""
+
   def __init__(self, driver):
     log.debug("Creating menu backend.")
     assert driver, "Need valid Menu driver instance."
     self.driver = driver
 
   def process_pastry(self, pastry_name, pastry_version, pastry_files):
+    """Process a pastry with the set driver."""
     num_files = len(pastry_files)
     with LogBlock("Backend Pastry Processing {} File(s)".format(num_files)):
       for pastry_file in pastry_files:

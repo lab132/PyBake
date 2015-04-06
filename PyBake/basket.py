@@ -38,7 +38,7 @@ def run(*, location, shopping_list="shoppingList", **kwargs):
     for pastry in pastries:
       with LogBlock("Requesting {}".format(pastry)):
         response = requests.post("{}/get_pastry".format(server_config),
-                                 data=pastry.server_data(),
+                                 data=pastry.shop_data(),
                                  stream=True)
         if response.status_code != requests.codes.ok:
           log.error("Request failed:\n{}".format(response.text))
