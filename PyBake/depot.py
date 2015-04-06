@@ -1,11 +1,14 @@
-"""Sending pastries generated from the oven to the shop
+"""
+Sending pastries generated from the oven to the shop.
 """
 
 from PyBake import *
 from PyBake.logger import *
 from importlib import import_module
 
+
 def run(*, pastry_path, config, **kwargs):
+  """Deposit a pastry in a shop."""
   import requests
 
   # Import the config script.
@@ -33,7 +36,7 @@ def run(*, pastry_path, config, **kwargs):
       data = json.loads(pastry_bytes.decode("UTF-8"))
 
   # Construct the `files` dictionary with the pastry package (.zip).
-  files = {"pastry" : pastry_path.open("rb")}
+  files = {"pastry": pastry_path.open("rb")}
 
   postUrl = "{}/upload_pastry".format(config.server)
   log.info("Placing deposit with {}...".format(postUrl))

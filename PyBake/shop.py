@@ -1,6 +1,6 @@
-'''
+"""
 Serving pastries to customers, fresh from the oven!
-'''
+"""
 
 from flask import Flask, request, session, g, redirect, url_for, abort, \
     render_template, flash, jsonify, send_from_directory
@@ -11,7 +11,9 @@ from PyBake import Path, MenuBackend, MenuDiskDriver
 from PyBake.logger import log, LogBlock
 from importlib import import_module
 
+
 def Shop(name=__name__):
+  """Create the Fask application."""
   with LogBlock("Shop"):
     menuBackend = MenuBackend(driver=MenuDiskDriver())
 
@@ -30,6 +32,7 @@ def Shop(name=__name__):
 
     @app.route("/upload_pastry", methods=["POST"])
     def upload_pastry():
+      """Downloads a pastry from the client to the server."""
       with LogBlock("Upload"):
         log.debug("Recieved upload request")
 
@@ -69,13 +72,13 @@ def Shop(name=__name__):
 
     @app.route("/get_pastry", methods=["POST"])
     def get_pastry():
+      """Sends a pastry to the client."""
       with LogBlock("Get Pastry"):
         log.debug("Recieved download request")
 
         data = dict(request.form)
         log.debug("Data: {}".format(data))
 
-        returnCode = 200
         errors = []
         response = {
           "result": "Ok"
@@ -105,6 +108,7 @@ def Shop(name=__name__):
 
 
 def run(*, config, **kwargs):
+  """Open the shop!"""
   app = Shop()
 
   shop_config = import_module(config)

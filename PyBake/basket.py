@@ -1,30 +1,49 @@
-"""The place to get your daily pastries!"""
+"""
+The place to get your daily pastries!
+"""
+
 from PyBake import *
 from os.path import expanduser
 from importlib import import_module
 
+
 def get_location_path(loc):
-  """Return a (resolved) path to the actual location on disk. `loc` must bei one of {"local", "system", "user"}."""
+  """Return a (resolved) path to the actual location on disk. `loc` must be one of {"local", "system", "user"}."""
   if loc == "system":
     assert False, "Not supported yet."
-  lookup = {"local" : Path.cwd(), "user" : Path(expanduser("~"))}
+  lookup = {"local": Path.cwd(), "user": Path(expanduser("~"))}
 
   return lookup[loc]
 
-def progress_listener(max_size):
-  max_size = max_size / (1024 * 1024)
-  log.start_progress(max_size, bar_template="%s[%s%s] %i/%i MiB - %s\r")
-  def on_progress(size):
-    if size:
-      log.set_progress(size / (1024 * 1024))
-    else:
-      log.set_progress(max_size)
-      log.end_progress()
-  return on_progress
+
+class ProgressListener:
+  """
+  Takes care of logging some progress.
+
+  Usage example:
+    with ProgressListener(50) as progress:
+      for i in range(5):
+        progress(10)
+  """
+
+  def __init__(self, *, logInterface=log, maxSize):
+    self.logInterface = logInterface
+    self.maxSize = maxSize
+
+  def __enter__(self, *args):
+    self.logInterface.start_progress(self.maxSize)
+    return self
+
+  def __exit__(self, *args):
+    self.logInterface.set_progress(self.maxSize)
+    self.logInterface.end_progress()
+
+  def __call__(self, size):
+    self.logInterface.set_progress(size)
 
 
 def run(*, location, shopping_list="shoppingList", **kwargs):
-  """Restocks pastries from the shop using the shopping list"""
+  """Gets pastries from the shop using the shopping list"""
   with LogBlock("Stock Exchange"):
     import requests
 
@@ -51,14 +70,12 @@ def run(*, location, shopping_list="shoppingList", **kwargs):
         out_path = pastries_root / pastry.path()
         log.info("Saving to: {}".format(out_path.as_posix()))
 
-        listener = progress_listener(size)
-
-        with out_path.open("wb") as out_file:
-          chunk_size = 1024 * 4 # 4 KiB at a time.
-          bytes_written = 0
-          for chunk in response.iter_content(chunk_size):
-            out_file.write(chunk)
-            bytes_written += chunk_size
-            listener(bytes_written)
-        listener(None)
+        with ProgressListener(maxSize=size) as progress:
+          with out_path.open("wb") as out_file:
+            chunk_size = 1024 * 4  # 4 KiB at a time.
+            bytes_written = 0
+            for chunk in response.iter_content(chunk_size):
+              out_file.write(chunk)
+              bytes_written += chunk_size
+              progress(bytes_written)
         log.success("Pastry received.")

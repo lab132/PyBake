@@ -1,6 +1,6 @@
-'''
+"""
 Logging facility of our bakery
-'''
+"""
 
 import sys
 from enum import IntEnum, unique
@@ -9,6 +9,7 @@ from clint.textui import progress
 
 @unique
 class LogVerbosity(IntEnum):
+  """Available log verbosity."""
   Error = 1,  # Print only error Messages and messages that marked as 'All'
   SeriousWarning = 2,  # Print Seriouse warnings and above
   Warning = 3,  # Print Warnings and above
@@ -21,6 +22,7 @@ class LogVerbosity(IntEnum):
 
 @unique
 class LogLevel(IntEnum):
+  """Available log levels."""
   All = 0,  # Log this one always
   Error = 1,  # An error message.
   SeriousWarning = 2,  # A serious warning message.
@@ -50,6 +52,7 @@ class LogBackend:
     self.prev_bar_template = None
 
     def create_log_message_function(value):
+      """Helper to create a logging function with a captures verbosity `value`."""
       return lambda self, message: self.log_message(value, message)
 
     # Auto generate helper methods like
@@ -61,15 +64,22 @@ class LogBackend:
     self.info(*args)
 
   def addLogSink(self, sink):
+    """
+    Add a log sink that will be called when a logging event occurs.
+    Can all the same sink multiple times.
+    """
     self.sinks.append(sink)
 
   def removeLogSink(self, sink):
+    """Remove a log sink so it won't receive logging events anymore."""
     self.sinks.remove(sink)
 
   def addLogBlock(self, block):
+    """Add a log block to the current logging context."""
     self.blockStack.append(block)
 
   def removeLogBlock(self, block):
+    """Remove a log block from the current logging context. if appropriate, the log block message will be printed."""
     if self.blockStack[-1] == block:
       if block.printed is True:  # Block was printed so we need to print out that we close this block now
         blockInfo = {
@@ -84,25 +94,25 @@ class LogBackend:
       raise ValueError("The given block is not the last Element in the stack!")
 
   def start_progress(self, expected_size, progress_char="=", bar_template=progress.BAR_TEMPLATE):
-    """Creates a progress bar"""
+    """Creates a progress bar."""
     self.prev_bar_template = progress.BAR_TEMPLATE
     progress.BAR_TEMPLATE = bar_template
     self.progress_bar = progress.Bar(expected_size=expected_size, filled_char=progress_char)
 
-  def set_progress(self, progress):
-    """Sets the progress of the bar if any"""
+  def set_progress(self, progressValue):
+    """Sets the progress of the current progress bar if any."""
     if self.progress_bar:
-      self.progress_bar.show(progress)
+      self.progress_bar.show(progressValue)
 
   def end_progress(self):
-    """Completes the progress"""
+    """Completes the progress."""
     if self.progress_bar:
       self.progress_bar.done()
       self.progress_bar = None
       progress.BAR_TEMPLATE = self.prev_bar_template
 
-
   def log_message(self, verbosity, message):
+    """Raise the logging event."""
     if not self.quiet and verbosity <= self.verbosity:
       logInfo = {
         "message": message,
@@ -129,18 +139,33 @@ log = LogBackend()
 
 
 class StdOutSink:
+  """Standard log sink that prints to `stdout`."""
 
   def log_message(self, *, verbosity, message, blockLevel):
+    """Handle the logging event."""
     output = sys.stdout
     if verbosity <= LogVerbosity.Warning:
       output = sys.stderr
     output.write("{0}{1}\n".format("  " * blockLevel, message))
 
   def log_block(self, *, blockLevel, name, isOpening):
+    """Handle the log block event."""
     sys.stdout.write("{0}{1} {2}\n".format("  " * blockLevel, "+++" if isOpening else "---", name))
 
 
 class LogBlock:
+  """
+  Create a log block in the current logging context.
+
+  Example:
+    with LogBlock("Hello"):
+      log.info("World")
+
+    With the StdOutSink, will print something like this:
+    +++ Hello
+      World
+    --- Hello
+  """
 
   def __init__(self, name, backend=log):
     self.printed = False
@@ -152,8 +177,7 @@ class LogBlock:
 
   enter = __enter__
 
-  def __exit__(self, type, value, tb):
-    self.exit()
-
-  def exit(self):
+  def __exit__(self, *args):
     self.backend.removeLogBlock(self)
+
+  exit = __exit__
