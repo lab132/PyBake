@@ -214,7 +214,6 @@ class Ingredient:
 class PastryJSONEncoder(json.JSONEncoder):
   """JSON Encoder that can handle PyBake classes."""
 
-  # pylint: disable=E0202
   def default(self, obj):
     """Called in the process of serializing python data structures to JSON."""
     if isinstance(obj, Platform):
