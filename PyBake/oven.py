@@ -8,11 +8,74 @@ import json
 import zipfile
 
 
+class Pot:
+  """Contains Dough that will be"""
+
+  @staticmethod
+  def createKey(name, version, platform):
+    return createFilename(name, version, platform)
+
+  def __init__(self):
+    self.ingredients = {}
+
+  def get(self, name, version, platform=Platform.All):
+    """Get dough matching the index arguments."""
+    assert platform is not None, "Expected valid platform instance, e.g. `Platform.All`."
+    key = (name, version, platform)
+    listOfIngredients = self.ingredients.get(key, None)
+    if listOfIngredients is None:
+      log.debug("Creating new entry in pot: {}".format(key))
+      listOfIngredients = []
+      self.ingredients[key] = listOfIngredients
+    return listOfIngredients
+
+
+def zipBaker(*, outDirPath, pot, options):
+  """Processes ingredients in a pot and creates pastries from that."""
+
+  def writePastryJson(zipFile, name, version, platform):
+    log.info("Writing pastry.json...")
+    pastry = {}
+    pastry["name"] = name
+    pastry["version"] = version
+    pastry["platform"] = platform
+    pastryJSON = json.dumps(pastry, indent=2, sort_keys=True, cls=PastryJSONEncoder)
+    zipFile.writestr("pastry.json", bytes(pastryJSON, "UTF-8"))
+
+  def writeIngredientsJson(zipFile, ingredients):
+    log.info("Writing ingredients.json...")
+    ingredientsJSON = json.dumps(ingredients, indent=2, sort_keys=True, cls=PastryJSONEncoder)
+    zipFile.writestr("ingredients.json", bytes(ingredientsJSON, "UTF-8"))
+
+  def zipIngredients(zipFile, ingredients):
+    log.info("Zipping ingredients...")
+    for ingredient in ingredients:
+      path = Path(ingredient).as_posix()
+      log.debug(path)
+      zipFile.write(path)
+
+  log.info("Creating directory for pastries: {}".format(outDirPath.as_posix()))
+  outDirPath.safe_mkdir(parents=True)
+
+  with LogBlock("Baking Pastries (Zip)"):
+    for key, ingredients in pot.ingredients.items():
+      name = key[0]
+      version = key[1]
+      platform = key[2]
+      with LogBlock("{} version {} for platform {} with {} ingredients".format(name, version, platform, len(ingredients))):
+        platformName = str(platform) if platform is not Platform.All else ""
+        zipFilePath = outDirPath / createFilename(name, version, platformName, fileExtension=".zip")
+        with zipfile.ZipFile(zipFilePath.as_posix(), "w", compression=options["compression"]) as zipFile:
+          writePastryJson(zipFile, name, version, platform)
+          writeIngredientsJson(zipFile, ingredients)
+          zipIngredients(zipFile, ingredients)
+        log.success("Done baking pastry: {}".format(zipFilePath.as_posix()))
+
 class JSONBaker:
   """Simply serializes all ingredients as JSON to the given file."""
 
-  def __init__(self, filepath, pastry_name, pastry_version, options):
-    self.filepath = filepath
+  def __init__(self, filePath, pastry_name, pastry_version, options):
+    self.filePath = filePath
     self.pastry_name = pastry_name
     self.pastry_version = pastry_version
     self.options = options or {}
@@ -33,32 +96,32 @@ class JSONBaker:
     indent_output = not self.options.get("no_indent_output", False)
     sort_keys = self.options.get("sort_keys", True)
 
-    with self.filepath.open("w") as output:
+    with self.filePath.open("w") as output:
       json.dump(pastry, output, indent=indent_output, sort_keys=sort_keys, cls=PastryJSONEncoder)
 
 
 class ZipBaker:
   """Packs all ingredients into a zip file along with some metadata encoded as JSON."""
 
-  # Suffix for the filepath while writing to it. Will be removed once all operations complete (transaction style).
+  # Suffix for the filePath while writing to it. Will be removed once all operations complete (transaction style).
   temp_suffix = ".tmp"
 
-  def __init__(self, filepath, pastry_name, pastry_version, options):
+  def __init__(self, filePath, pastry_name, pastry_version, options):
     # Append the temp suffix.
-    filepath = Path(filepath.as_posix() + ZipBaker.temp_suffix)
+    filePath = Path(filePath.as_posix() + ZipBaker.temp_suffix)
 
     # Make sure the dir exists.
-    if not filepath.parent.exists():
-      filepath.parent.mkdir(parents=True)
+    if not filePath.parent.exists():
+      filePath.parent.mkdir(parents=True)
 
     # Make sure the file exists so we can resolve to ab absolute path (below).
-    filepath.touch()
+    filePath.touch()
 
     # Make an absolute path.
-    self.filepath = filepath.resolve()
+    self.filePath = filePath.resolve()
 
     # Open the zip file for writing.
-    self.zip = zipfile.ZipFile(self.filepath.as_posix(), "w", compression=zipfile.ZIP_DEFLATED)
+    self.zip = zipfile.ZipFile(self.filePath.as_posix(), "w", compression=zipfile.ZIP_DEFLATED)
     self.pastry_name = pastry_name
     self.pastry_version = pastry_version
     self.options = options or {}
@@ -87,38 +150,47 @@ class ZipBaker:
     # Close the zip file
     self.zip.close()
 
-    log.debug("Replacing {0}/{{ {1.name} => {1.stem} }}".format(self.filepath.parent.as_posix(), self.filepath))
-    self.filepath.replace(Path(self.filepath.stem))
+    log.debug("Replacing {0}/{{ {1.name} => {1.stem} }}".format(self.filePath.parent.as_posix(), self.filePath))
+    self.filePath.replace(Path(self.filePath.stem))
 
 
-def run(*,                     # Keyword arguments only.
-        pastry_name,           # The name of the pastry.
-        pastry_version,        # The version-string of the pastry.
-        working_dir,           # Working directory in which to look for and execute the `recipe`
-        recipe_name,           # The name of the recipe to load, which provides ingredients.
-        output,                # The target file e.g. a ZIP file. Relative to the original working dir.
-        baker_class=ZipBaker,  # Processes ingredients and creates a pastry.
-        **kwargs):             # kwargs passed as `options` to the `baker_function`.
+def run(*,                   # Keyword arguments only.
+        recipes_script,      # Path to the recipes script.
+        working_dir,         # Working directory when executing the recipes script.
+        output,              # Directory that will contain all resulting pastries.
+        bakerFunc=zipBaker,  # Processes ingredients and creates a pastry.
+        **kwargs):           # kwargs passed as `options` to the `bakerFunc`.
   """Run the oven command."""
   with LogBlock("Oven"):
     # Make sure the working dir exists.
     working_dir = working_dir.resolve()
 
-    baker = baker_class(output, pastry_name, pastry_version, kwargs)
+    # Create an empty pot.
+    pot = Pot()
 
     # Change into the working directory given by the user.
     with ChangeDir(working_dir):
-      log.debug("Working dir for recipe: {}".format(working_dir.as_posix()))
-      log.info("Processing recipe '{0}'".format(recipe_name))
+      log.debug("Working dir for recipes script: {}".format(working_dir.as_posix()))
 
-      # Load the recipe, which will register some handlers that yield ingredients.
-      import_module(recipe_name)
+      if not recipes_script.exists():
+        log.error("Recipes script does not exist: {}".format(recipes_script.as_posix()))
+        return 1
+
+      log.info("Processing '{0}'".format(recipes_script))
+
+      if recipes_script.suffix == ".py":
+        # Remove file extension.
+        recipes_script = recipes_script.parent / recipes_script.stem
+
+      # Load the recipe, which will register some handlers.
+      import_module(recipes_script.as_posix())
       if len(recipes) == 0:
         log.error("No recipes found. Make sure to create functions in your script and decorate them with @recipe.")
         return
 
       for rcp in recipes:
-        for ing in rcp():
-          baker.process(ing)
+        # Call the recipe with our pot.
+        rcp(pot)
 
-      baker.done()
+    # All ingredients are collected in the pot now, so the baker can start working.
+    bakerFunc(outDirPath=output, pot=pot, options=kwargs)

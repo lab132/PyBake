@@ -8,15 +8,15 @@ import pathlib
 from copy import deepcopy
 from importlib import import_module
 from PyBake.logger import log, LogBlock
-from werkzeug.utils import secure_filename
-from os import path
+import os
 import re
 import json
+import zipfile
 
 if __name__ == "__main__":
   raise RuntimeError("__init__.py is not supposed to be executed!")
 
-here = path.abspath(path.dirname(__file__))
+here = os.path.abspath(os.path.dirname(__file__))
 
 version = {
   "Major": 0,
@@ -24,7 +24,7 @@ version = {
   "Patch": 0,
 }
 
-with open(path.join(here, "VERSION"), encoding="UTF-8") as f:
+with open(os.path.join(here, "VERSION"), encoding="UTF-8") as f:
   versionString = f.read().strip()
   versionMatch = re.search(r"(?P<Major>\d+)\.(?P<Minor>\d+)\.(?P<Patch>\d+)", versionString)
   if versionMatch:
@@ -48,6 +48,23 @@ def try_getattr(obj, choices, default_value=None, raise_error=False):
   if raise_error:
     raise AttributeError("Unable to find attribute with any of these names: {}".format(choices))
   return default_value
+
+
+def createFilename(*args, fileExtension=None):
+  """Create a proper filename from the given `args`."""
+  from werkzeug.utils import secure_filename
+  fileName = secure_filename("_".join(str(arg) for arg in args))
+  if fileExtension:
+    fileName += str(fileExtension)
+  return fileName
+
+
+zipCompressionLookup = {
+  "stored": zipfile.ZIP_STORED,
+  "deflated": zipfile.ZIP_DEFLATED,
+  "bzip2": zipfile.ZIP_BZIP2,
+  "lzma": zipfile.ZIP_LZMA,
+}
 
 
 recipes = []
@@ -148,19 +165,20 @@ class Platform:
     self.bits = bits
     self.generator = generator
     self.config = config
-    self.user_data = user_data
 
   def isValid(self):
     """A platform is valid if it has either a `name` or a `detailed_name`."""
     return self.name is not None or self.detailed_name is not None
 
   def __str__(self):
+    if self is Platform.All:
+      return "all"
     if self.detailed_name is not None:
       return self.detailed_name
-    return "Platform '{}'".format(self.name)
+    return "{0.name}{0.bits}{0.generator}{0.config}".format(self)
 
   def __repr__(self):
-    return "<{0.name} ({0.detailed_name}) {0.bits} bit {0.generator} {0.config}: {0.user_data}>".format(self)
+    return "Platform({0.name} ({0.detailed_name}), {0.bits} bits, {0.generator}, {0.config})".format(self)
 
   def __iter__(self):
     yield ("name", self.name,)
@@ -168,7 +186,6 @@ class Platform:
     yield ("bits", self.bits,)
     yield ("generator", self.generator,)
     yield ("config", self.config,)
-    yield ("user_data", str(self.user_data),)
 
   # Represents all platforms.
   All = None  # Is initialized after the declaration of this class
@@ -188,29 +205,6 @@ class Platform:
 Platform.All = Platform(name="all")
 
 
-class Ingredient:
-  """A wrapper for an existing file that has tags attached to it."""
-
-  def __init__(self, ingredient_path, *, tags={}):
-    self.path = ingredient_path
-    self.tags = tags
-
-  def __str__(self):
-    return "{0.path.name}".format(self)
-
-  def __repr__(self):
-    return "Ingredient({}{})".format(repr(self.path), repr(self.tags))
-
-  def __iter__(self):
-    yield ("path", self.path.as_posix(),)
-    yield ("tags", self.tags,)
-
-  def make_relative_to(self, root):
-    """Makes the path of the ingredient relative to `root`. `root` must be an absolute path."""
-    if self.path.is_absolute():
-      self.path = self.path.relative_to(root)
-
-
 class PastryJSONEncoder(json.JSONEncoder):
   """JSON Encoder that can handle PyBake classes."""
 
@@ -218,8 +212,8 @@ class PastryJSONEncoder(json.JSONEncoder):
     """Called in the process of serializing python data structures to JSON."""
     if isinstance(obj, Platform):
       return dict(obj)
-    if isinstance(obj, Ingredient):
-      return dict(obj)
+    if isinstance(obj, Path):
+      return obj.as_posix()
     return json.JSONEncoder.default(self, obj)
 
 
@@ -278,7 +272,7 @@ class Pastry:
 
   def path(self):
     """Return the path of this pastry."""
-    return Path(secure_filename("{}/{}.zip".format(self.name, self.version)))
+    return Path(createFilename(self.name, self.version) + ".zip")
 
   def shop_data(self):
     """Returns a dictionary containing all relevent data the shop (server) needs."""

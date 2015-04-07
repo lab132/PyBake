@@ -4,7 +4,7 @@ import sys
 import os
 import argparse
 import textwrap
-from PyBake import Path, version
+from PyBake import Path, version, zipCompressionLookup
 from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock
 
 # Make sure this module is executed, not imported.
@@ -50,21 +50,22 @@ def execute_shop(args):
   """Execute the `shop` command."""
   log.debug(args)
   from PyBake import shop
-  shop.run(**vars(args))
+  return shop.run(**vars(args))
 
 
 def execute_basket(args):
   """Execute the `basket` command."""
   log.debug(args)
   from PyBake import basket
-  basket.run(**vars(args))
+  return basket.run(**vars(args))
 
 
 def execute_oven(args):
   """Execute the `oven` command."""
   log.info("Executing oven")
   from PyBake import oven
-  oven.run(**vars(args))
+  args.compression = zipCompressionLookup[args.compression]
+  return oven.run(**vars(args))
 
 
 def execute_depot(args):
@@ -72,7 +73,7 @@ def execute_depot(args):
   with LogBlock("Depot"):
     log.debug(args)
     from PyBake import depot
-    depot.run(**vars(args))
+    return depot.run(**vars(args))
 
 
 # Main Parser
@@ -96,22 +97,22 @@ subparsers.required = True
 # ==========
 ovenParser = subparsers.add_parser("oven", help=ovenDescription, description=ovenDescription)
 
-ovenParser.add_argument("pastry_name",
-                        type=str,
-                        help="The name of the crumble to create.")
-ovenParser.add_argument("pastry_version",
-                        type=str,
-                        help="The version of the crumble.")
-ovenParser.add_argument("-r", "--recipe", type=str, default="recipe", dest="recipe_name",
-                        help="Name of the recipe module. "
-                        "This module is expected to live directly in the working directory, "
-                        "not any sub-directory, with the name `<RECIPE>.py`.")
-ovenParser.add_argument("-o", "--output", type=Path, default=Path("pastry.zip"),
-                        help="The resulting JSON file relative to the original working dir. Ignored --working-dir")
-ovenParser.add_argument("-d", "--working-dir", type=Path, default=Path("."),
-                        help="The working directory when executing the RECIPE.")
-ovenParser.add_argument("--no-indent-output", action="store_true", default=False,
-                        help="Whether to produce a compressed NOT human-friendly, unindented JSON file.")
+ovenParser.add_argument("recipes_script",
+                        type=Path,
+                        nargs="?",
+                        default=Path("recipes.py"),
+                        help="Path to the recipes script. Default: 'recipes.py'")
+ovenParser.add_argument("-o", "--output", type=Path, default=Path(".pastries"),
+                        help="The directory to store the pastries in. Defaults to '.pastries'.")
+ovenParser.add_argument("-d", "--working-dir",
+                        type=Path,
+                        nargs="?",
+                        default=Path.cwd(),
+                        help="The working directory when executing the `recipes_script`. Defaults to the current working dir.")
+ovenParser.add_argument("-c", "--compression",
+                        choices=zipCompressionLookup.keys(),
+                        default="deflated",
+                        help="The compression method used to create a pastry.")
 ovenParser.set_defaults(func=execute_oven)
 
 # DepotParser
@@ -136,7 +137,9 @@ depotParser.set_defaults(func=execute_depot)
 
 basketParser = subparsers.add_parser("basket", help=basketDescription, description=basketDescription)
 
-basketParser.add_argument("shopping_list", nargs="?", default="shoppingList",
+basketParser.add_argument("shopping_list",
+                          nargs="?",
+                          default="shoppingList",
                           help="Sets the used shoppingList (defaults to 'shoppingList') which will be reused"
                           "to retrieve pastries from the shop.")
 basketParser.add_argument("-l", "--location",
@@ -171,6 +174,7 @@ def main():
   log.verbosity = LogVerbosity(args.verbose)
   log.quiet = args.quiet
 
-  args.func(args)
+  result = args.func(args)
+  sys.exit(result)
 
 main()
