@@ -32,11 +32,6 @@ ovenDescription = textwrap.dedent(
   Tool to create crumbles.
   """)
 
-basketDescription = textwrap.dedent(
-  """
-  Retrieves pastries from the shop.
-  """)
-
 serverDescription = textwrap.dedent(
   """
   Sets up a server for crumble management
@@ -48,13 +43,6 @@ def execute_shop(args):
   log.debug(args)
   from PyBake import shop
   return shop.run(**vars(args))
-
-
-def execute_basket(args):
-  """Execute the `basket` command."""
-  log.debug(args)
-  from PyBake import basket
-  return basket.run(**vars(args))
 
 
 def execute_oven(args):
@@ -110,22 +98,6 @@ ovenParser.add_argument("-c", "--compression",
                         help="The compression method used to create a pastry.")
 ovenParser.set_defaults(func=execute_oven)
 
-
-# BasketParser
-# ===========
-
-basketParser = subparsers.add_parser("basket", help=basketDescription, description=basketDescription)
-
-basketParser.add_argument("shopping_list",
-                          nargs="?",
-                          default="shoppingList",
-                          help="Sets the used shoppingList (defaults to 'shoppingList') which will be reused"
-                          "to retrieve pastries from the shop.")
-basketParser.add_argument("-l", "--location",
-                          default="user",
-                          choices=["local", "user", "system"],
-                          help="Where to save the pastries to.")
-basketParser.set_defaults(func=execute_basket)
 
 # ServerParser
 # ============
