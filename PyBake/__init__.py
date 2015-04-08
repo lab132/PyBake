@@ -16,20 +16,23 @@ import zipfile
 if __name__ == "__main__":
   raise RuntimeError("__init__.py is not supposed to be executed!")
 
-here = os.path.abspath(os.path.dirname(__file__))
-
 version = {
   "Major": 0,
   "Minor": 0,
   "Patch": 0,
 }
 
-with open(os.path.join(here, "VERSION"), encoding="UTF-8") as f:
-  versionString = f.read().strip()
-  versionMatch = re.search(r"(?P<Major>\d+)\.(?P<Minor>\d+)\.(?P<Patch>\d+)", versionString)
-  if versionMatch:
-    for key in version:
-      version[key] = int(versionMatch.group(key))
+
+def updateVersionFromFile():
+  here = os.path.abspath(os.path.dirname(__file__))
+  with open(os.path.join(here, "VERSION"), encoding="UTF-8") as f:
+    versionString = f.read().strip()
+    versionMatch = re.search(r"(?P<Major>\d+)\.(?P<Minor>\d+)\.(?P<Patch>\d+)", versionString)
+    if versionMatch:
+      for key in version:
+        version[key] = int(versionMatch.group(key))
+
+updateVersionFromFile()
 
 
 def try_getattr(obj, choices, default_value=None, raise_error=False):
@@ -159,7 +162,7 @@ class ServerConfig:
 class Platform:
   """Object describing a platform such as 'Windows 64 bit VisualStudio2013 Debug'."""
 
-  def __init__(self, *, name=None, detailed_name=None, bits=64, generator=None, config="Debug", user_data=None):
+  def __init__(self, *, name=None, detailed_name=None, bits=64, generator=None, config="Debug"):
     self.name = name
     self.detailed_name = detailed_name
     self.bits = bits
@@ -253,22 +256,19 @@ class ChangeDir:
 
   def enter(self):
     """Enter the given directory. Should not be called manually, use `with` instead."""
-    import os
     os.chdir(self.current.as_posix())
 
   def exit(self):
     """Exit the given directory. Should not be called manually, use `with` instead."""
-    import os
     os.chdir(self.previous.as_posix())
 
 
 class Pastry:
   """Describes a pastry (a package)."""
 
-  def __init__(self, name, pastry_version, file):
+  def __init__(self, name, pastry_version):
     self.name = name
     self.version = pastry_version
-    self.file = file
 
   def path(self):
     """Return the path of this pastry."""
@@ -287,7 +287,7 @@ class Pastry:
   @staticmethod
   def from_dict(desc):
     """Extract data from a dictionary and instanciate a `Pastry` instance from that."""
-    return Pastry(name=desc["name"], pastry_version=desc["version"], file=None)
+    return Pastry(name=desc["name"], pastry_version=desc["version"])
 
 
 class ShoppingList:
@@ -342,7 +342,7 @@ class MenuDiskDriver:
       with self.menu_path.open("r") as menu_file:
         self.menu = json.load(menu_file)
 
-  def create_pastry(self, pastry):
+  def create_pastry(self, pastry, pastryFile):
     """Writes the given pastry to the disk"""
     with LogBlock("Writing Disk"):
       pastry_path = self.pastries_root / pastry.path()
@@ -351,7 +351,7 @@ class MenuDiskDriver:
 
       log.info("Pastry destination: {}".format(pastry_path.as_posix()))
 
-      pastry.file.save(pastry_path.as_posix())
+      pastryFile.save(pastry_path.as_posix())
       self.add_to_menu(pastry)
 
   def has_pastry(self, *, name, pastry_version, **kwargs):
@@ -401,11 +401,10 @@ class MenuBackend:
     """Process a pastry with the set driver."""
     num_files = len(pastry_files)
     with LogBlock("Backend Pastry Processing {} File(s)".format(num_files)):
-      for pastry_file in pastry_files:
+      for pastryFile in pastry_files:
         pastry = Pastry(name=pastry_name,
-                        pastry_version=pastry_version,
-                        file=pastry_file)
-        self.driver.create_pastry(pastry)
+                        pastry_version=pastry_version)
+        self.driver.create_pastry(pastry, pastryFile)
 
   def get_pastry(self, errors, pastry_name, pastry_version):
     """Gets a pastry from the menu, if it exists"""
