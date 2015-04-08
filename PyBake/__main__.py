@@ -6,6 +6,8 @@ import argparse
 import textwrap
 from PyBake import Path, version, zipCompressionLookup
 from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock
+import pkgutil
+from importlib import import_module
 
 # Make sure this module is executed, not imported.
 if __name__ != '__main__':
@@ -34,12 +36,6 @@ basketDescription = textwrap.dedent(
   Retrieves pastries from the shop.
   """)
 
-depotDescription = textwrap.dedent(
-  """
-  Uploads crumbles to the server given a pastry info file.
-  """
-  )
-
 serverDescription = textwrap.dedent(
   """
   Sets up a server for crumble management
@@ -67,15 +63,6 @@ def execute_oven(args):
   args.compression = zipCompressionLookup[args.compression]
   return oven.run(**vars(args))
 
-
-def execute_depot(args):
-  """Execute the `depot` command."""
-  with LogBlock("Depot"):
-    log.debug(args)
-    from PyBake import depot
-    return depot.run(**vars(args))
-
-
 # Main Parser
 # ===========
 mainParser = argparse.ArgumentParser(prog="PyBake", description=description)
@@ -92,6 +79,13 @@ mainParser.add_argument("-v", "--verbose", action="count", default=0,
 subparsers = mainParser.add_subparsers(dest="CommandName", title="Commands")
 # Commands are required except when calling -h or -V
 subparsers.required = True
+
+pyBakeSubmodules = [name for _, name in pkgutil.iter_modules(['PyBake'])]
+
+for module in pyBakeSubmodules:
+  importedModule = import_module("PyBake.{}".format(module))
+  if hasattr(importedModule, "moduleManager"):
+    importedModule.moduleManager.createSubParser(subparsers)
 
 # OvenParser
 # ==========
@@ -115,22 +109,6 @@ ovenParser.add_argument("-c", "--compression",
                         help="The compression method used to create a pastry.")
 ovenParser.set_defaults(func=execute_oven)
 
-# DepotParser
-# ===========
-
-depotParser = subparsers.add_parser("depot", help=depotDescription, description=depotDescription)
-
-depotParser.add_argument("pastry_path",
-                         type=Path,
-                         nargs="?",
-                         default=Path("pastry.zip"),
-                         help="Path to the pastry file (defaults to \"./pastry.zip\").")
-
-depotParser.add_argument("-c", "--config",
-                         default="config",
-                         help="Name of the python module containing configuration data. "
-                         "This file must exist in the working directory. (defaults to \"config\").")
-depotParser.set_defaults(func=execute_depot)
 
 # BasketParser
 # ===========
