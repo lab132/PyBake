@@ -8,6 +8,7 @@ from PyBake import Path, version, zipCompressionLookup
 from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock
 import pkgutil
 from importlib import import_module
+import re
 
 # Make sure this module is executed, not imported.
 if __name__ != '__main__':
@@ -80,7 +81,7 @@ subparsers = mainParser.add_subparsers(dest="CommandName", title="Commands")
 # Commands are required except when calling -h or -V
 subparsers.required = True
 
-pyBakeSubmodules = [name for _, name in pkgutil.iter_modules(['PyBake'])]
+pyBakeSubmodules = [name for _, name, _ in pkgutil.iter_modules(['PyBake']) if re.search("__[\w]+__",name) is None]
 
 for module in pyBakeSubmodules:
   importedModule = import_module("PyBake.{}".format(module))

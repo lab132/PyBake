@@ -5,6 +5,7 @@ Sending pastries generated from the oven to the shop.
 from PyBake import *
 from PyBake.logger import *
 from importlib import import_module
+import textwrap
 
 class DepotModuleManager:
   """Module Manager for Depot"""
@@ -18,7 +19,7 @@ class DepotModuleManager:
   def createSubParser(self, subParsers):
     """Create the subparser and arguments for the depot command"""
 
-    depotParser = subParsers.add_parser("depot", help=longDescription, description=longDescription)
+    depotParser = subParsers.add_parser("depot", help=self.longDescription, description=self.longDescription)
 
     depotParser.add_argument("pastry_path",
                              type=Path,
