@@ -108,7 +108,7 @@ ovenParser.add_argument("-d", "--working-dir",
                         type=Path,
                         nargs="?",
                         default=Path.cwd(),
-                        help="The working directory when executing the `recipes_script`. Defaults to the current working dir.")
+                        help="The working dir when running the `recipes_script`. Defaults to the current working dir.")
 ovenParser.add_argument("-c", "--compression",
                         choices=zipCompressionLookup.keys(),
                         default="deflated",
@@ -120,11 +120,12 @@ ovenParser.set_defaults(func=execute_oven)
 
 depotParser = subparsers.add_parser("depot", help=depotDescription, description=depotDescription)
 
-depotParser.add_argument("pastry_path",
+depotParser.add_argument("pastryPaths",
                          type=Path,
-                         nargs="?",
-                         default=Path("pastry.zip"),
-                         help="Path to the pastry file (defaults to \"./pastry.zip\").")
+                         nargs="*",
+                         default=[Path(".pastries")],
+                         metavar="pastry_path",
+                         help="Each pastry_path must either be an existing pastry file or an existing directory that contains pastries.")
 
 depotParser.add_argument("-c", "--config",
                          default="config",
