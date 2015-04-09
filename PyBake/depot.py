@@ -38,7 +38,7 @@ def execute_depot(args):
   """Execute the `depot` command."""
   with LogBlock("Depot"):
     log.debug(args)
-    return depot.run(**vars(args))
+    return run(**vars(args))
 
 
 moduleManager = DepotModuleManager()
