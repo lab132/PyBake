@@ -14,10 +14,11 @@ class Pot:
   def __init__(self):
     self.ingredients = {}
 
-  def get(self, name, version, platform=Platform.All):
-    """Get a pastry matching the given name, version, and platform."""
-    key = (name, version, platform)
-    assert None not in key, "None of the given arguments are allowed to be `None`."
+  def get(self, name, version):
+    """Get a pastry matching the given name and version."""
+    assert name is not None, "`name` must not be None!"
+    assert version is not None, "`version` must not be None!"
+    key = (name, version)
     listOfIngredients = self.ingredients.get(key, None)
     if listOfIngredients is None:
       log.debug("Creating new entry in pot: {}".format(key))
@@ -26,13 +27,12 @@ class Pot:
     return listOfIngredients
 
 
-def writePastryJson(zipFile, name, version, platform):
+def writePastryJson(zipFile, name, version):
   """Helper function of `zipBaker` that writes a pastry.json file to the given `zipFile`."""
   log.info("Writing pastry.json...")
   pastry = {}
   pastry["name"] = name
   pastry["version"] = version
-  pastry["platform"] = platform
   pastryJSON = json.dumps(pastry, indent=2, sort_keys=True, cls=PastryJSONEncoder)
   zipFile.writestr("pastry.json", bytes(pastryJSON, "UTF-8"))
 
@@ -63,12 +63,10 @@ def zipBaker(*, outDirPath, pot, options):
     for key, ingredients in pot.ingredients.items():
       name = key[0]
       version = key[1]
-      platform = key[2]
-      with LogBlock("{} version {} for platform {} with {} ingredients".format(name, version, platform, len(ingredients))):
-        platformName = str(platform) if platform is not Platform.All else ""
-        zipFilePath = outDirPath / createFilename(name, version, platformName, fileExtension=".zip")
+      with LogBlock("{} version {} with {} ingredients".format(name, version, len(ingredients))):
+        zipFilePath = outDirPath / createFilename(name, version, fileExtension=".zip")
         with zipfile.ZipFile(zipFilePath.as_posix(), "w", compression=options["compression"]) as zipFile:
-          writePastryJson(zipFile, name, version, platform)
+          writePastryJson(zipFile, name, version)
           writeIngredientsJson(zipFile, ingredients)
           zipIngredients(zipFile, ingredients)
         log.success("Done baking pastry: {}".format(zipFilePath.as_posix()))

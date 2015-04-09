@@ -263,18 +263,21 @@ class ChangeDir:
     os.chdir(self.previous.as_posix())
 
 
-class Pastry:
+class PastryDesc:
   """Describes a pastry (a package)."""
 
-  def __init__(self, name, pastry_version):
+  def __init__(self, *, name, version, dependencies=None):
     self.name = name
-    self.version = pastry_version
+    self.version = version
+    self.dependencies = dependencies or []
 
+  @property
   def path(self):
-    """Return the path of this pastry."""
+    """Construct the path of this pastry from its name and version."""
     return Path(createFilename(self.name, self.version) + ".zip")
 
-  def shop_data(self):
+  @property
+  def shopData(self):
     """Returns a dictionary containing all relevent data the shop (server) needs."""
     return dict(name=self.name, version=self.version)
 
@@ -282,12 +285,27 @@ class Pastry:
     return "{} version {}".format(self.name, self.version)
 
   def __repr__(self):
-    return "Pastry(name={}, version={})".format(self.name, self.version)
+    return "PastryDesc(name={}, version={}, dependencies={})".format(self.name,
+                                                                     self.version,
+                                                                     self.dependencies)
 
   @staticmethod
   def from_dict(desc):
     """Extract data from a dictionary and instanciate a `Pastry` instance from that."""
-    return Pastry(name=desc["name"], pastry_version=desc["version"])
+    return Pastry(name=desc["name"], version=desc["version"])
+
+
+class Pastry(PastryDesc):
+  """docstring for Pastry"""
+  def __init__(self, *, name, version, dependencies=None, ingredients=None):
+    super().__init__(name=name, version=version, dependencies=dependencies)
+    self.ingredients = ingredients or []
+
+  def __repr__(self):
+    return "Pastry(name={}, version={}, dependencies={}, ingredients={})".format(self.name,
+                                                                                 self.version,
+                                                                                 self.dependencies,
+                                                                                 self.ingredients)
 
 
 class ShoppingList:
@@ -345,7 +363,7 @@ class MenuDiskDriver:
   def create_pastry(self, pastry, pastryFile):
     """Writes the given pastry to the disk"""
     with LogBlock("Writing Disk"):
-      pastry_path = self.pastries_root / pastry.path()
+      pastry_path = self.pastries_root / pastry.path
       if not pastry_path.parent.exists():
         pastry_path.parent.mkdir(parents=True)
 
@@ -378,7 +396,7 @@ class MenuDiskDriver:
       # Get the menu entry for this pastry (name only) or a new list.
       known_versions = self.menu.get(pastry.name, {})
       if pastry.version not in known_versions:
-        known_versions.update({pastry.version: pastry.path().as_posix()})
+        known_versions.update({pastry.version: pastry.path.as_posix()})
       self.menu[pastry.name] = known_versions
       self.sync_menu()
 
@@ -403,7 +421,7 @@ class MenuBackend:
     with LogBlock("Backend Pastry Processing {} File(s)".format(num_files)):
       for pastryFile in pastry_files:
         pastry = Pastry(name=pastry_name,
-                        pastry_version=pastry_version)
+                        version=pastry_version)
         self.driver.create_pastry(pastry, pastryFile)
 
   def get_pastry(self, errors, pastry_name, pastry_version):

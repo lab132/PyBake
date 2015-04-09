@@ -69,7 +69,8 @@ def get_runtime_files(pots):
     if not subpath.is_dir() or subpath.match("*Test*"):
       continue
     platform = extract_platform(subpath)
-    pot = pots.get("ezEngine_Bin", pastry_version, platform)
+    pastryName = createFilename("ezEngine_Bin", platform)
+    pot = pots.get(pastryName, pastry_version)
     for ingredient in chain(subpath.rglob("ez*.dll"), subpath.rglob("ez*.pdb"), subpath.rglob("ez*.so")):
       pot.append(ingredient)
 
@@ -81,6 +82,7 @@ def get_compiletime_files(pots):
     if not subpath.is_dir() or subpath.match("*Test*"):
       continue
     platform = extract_platform(subpath)
-    pot = pots.get("ezEngine_Lib", pastry_version, platform)
+    pastryName = createFilename("ezEngine_Lib", platform)
+    pot = pots.get(pastryName, pastry_version)
     for ingredient in subpath.rglob("ez*.lib"):
       pot.append(ingredient)
