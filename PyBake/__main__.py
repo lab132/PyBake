@@ -39,18 +39,31 @@ mainParser.add_argument("-v", "--verbose", action="count", default=0,
                         "more v's generates more verbose output (Up to 8). "
                         "Default is {0}".format(int(LogVerbosity.Success)))
 
-# Subparsers
-# ==========
-subparsers = mainParser.add_subparsers(dest="CommandName", title="Commands")
-# Commands are required except when calling -h or -V
-subparsers.required = True
 
-pyBakeSubmodules = [name for _, name, _ in pkgutil.iter_modules(['PyBake']) if re.search("__[\w]+__",name) is None]
+def initCommands():
 
-for module in pyBakeSubmodules:
-  importedModule = import_module("PyBake.{}".format(module))
-  if hasattr(importedModule, "moduleManager"):
-    importedModule.moduleManager.createSubParser(subparsers)
+  # Subparsers
+  # ==========
+  subparsers = mainParser.add_subparsers(dest="CommandName", title="Commands")
+  # Commands are required except when calling -h or -V
+  subparsers.required = True
+
+  pyBakeSubmodules = [name for _, name, _ in pkgutil.iter_modules(['PyBake/commands']) if re.search("__[\w]+__",name) is None]
+
+  print(pyBakeSubmodules)
+
+  for module in pyBakeSubmodules:
+    importedModule = import_module("PyBake.commands.{}".format(module))
+    #if hasattr(importedModule, "moduleManager"):
+    #  importedModule.moduleManager.createSubParser(subparsers)
+
+  from PyBake.commands import commands
+
+  for commandName, commandClass in commands.items():
+    print("Processing command: {}".format(commandName))
+    commandObject = commandClass()
+    subParser = subparsers.add_parser(commandName, help=commandObject.longDescription, description=commandObject.longDescription)
+    commandObject.createArguments(subParser)
 
 # Main
 # ====
@@ -59,6 +72,8 @@ for module in pyBakeSubmodules:
 def main():
   """Main function of this script. Mainly serves as a scope."""
   log.addLogSink(StdOutSink())
+
+  initCommands()
 
   args = mainParser.parse_args()
 

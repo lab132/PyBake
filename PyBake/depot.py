@@ -41,7 +41,7 @@ def execute_depot(args):
     return run(**vars(args))
 
 
-moduleManager = DepotModuleManager()
+#moduleManager = DepotModuleManager()
 
 def run(*, pastry_path, config, **kwargs):
   """Deposit a pastry in a shop."""
