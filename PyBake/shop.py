@@ -10,6 +10,32 @@ import json
 from PyBake import Path, MenuBackend, MenuDiskDriver
 from PyBake.logger import log, LogBlock
 from importlib import import_module
+import textwrap
+
+
+class ShopModuleManager:
+  """Creating argparse arguments for the shop command and the command itself"""
+
+  longDescription = textwrap.dedent(
+    """
+    Sets up a server for crumble management
+    """)
+
+  def createSubParser(self, subParsers):
+    shopParser = subParsers.add_parser("shop", help=self.longDescription, description=self.longDescription)
+
+    shopParser.add_argument("-c", "--config", default="shop_config",
+                            help="Supply a custom config for the shop (defaults to shop_config")
+    shopParser.set_defaults(func=execute_shop)
+
+moduleManager = ShopModuleManager()
+
+def execute_shop(args):
+  """Execute the `shop` command."""
+  log.debug(args)
+  from PyBake import shop
+  return shop.run(**vars(args))
+
 
 
 def Shop(name=__name__):

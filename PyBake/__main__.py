@@ -27,17 +27,6 @@ description = textwrap.dedent(
   A single dependency is referred to as a crumble.
   """)
 
-serverDescription = textwrap.dedent(
-  """
-  Sets up a server for crumble management
-  """)
-
-
-def execute_shop(args):
-  """Execute the `shop` command."""
-  log.debug(args)
-  from PyBake import shop
-  return shop.run(**vars(args))
 
 # Main Parser
 # ===========
@@ -62,18 +51,6 @@ for module in pyBakeSubmodules:
   importedModule = import_module("PyBake.{}".format(module))
   if hasattr(importedModule, "moduleManager"):
     importedModule.moduleManager.createSubParser(subparsers)
-
-
-
-# ServerParser
-# ============
-
-shopParser = subparsers.add_parser("shop", help=serverDescription, description=serverDescription)
-
-shopParser.add_argument("-c", "--config", default="shop_config",
-                        help="Supply a custom config for the shop (defaults to shop_config")
-shopParser.set_defaults(func=execute_shop)
-
 
 # Main
 # ====
