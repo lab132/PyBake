@@ -14,7 +14,7 @@ from importlib import import_module
 
 def Shop(name=__name__):
   """Create the Fask application."""
-  with LogBlock("Shop"):
+  with LogBlock("Creating Shop Instance"):
     menuBackend = MenuBackend(driver=MenuDiskDriver())
 
     # create our little application :)
@@ -109,8 +109,9 @@ def Shop(name=__name__):
 
 def run(*, config, **kwargs):
   """Open the shop!"""
-  app = Shop()
+  with LogBlock("Shop"):
+    app = Shop()
 
-  shop_config = import_module(config)
+    shop_config = import_module(config)
 
-  app.run(debug=True, host=shop_config.server.host, port=shop_config.server.port)
+    app.run(debug=True, host=shop_config.server.host, port=shop_config.server.port)

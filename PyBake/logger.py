@@ -47,13 +47,14 @@ class LogBackend:
     self.sinks = sinks
     self.verbosity = verbosity
     self.quiet = quiet
-    self.blockStack = []
+    self.printedBlocks = []
+    self.newBlocks = []
     self.progress_bar = None
-    self.prev_bar_template = None
+    self.prevBarTemplate = None
 
     def create_log_message_function(value):
       """Helper to create a logging function with a captures verbosity `value`."""
-      return lambda self, message: self.log_message(value, message)
+      return lambda self, message: self.logMessage(value, message)
 
     # Auto generate helper methods like
     # LogBackend.error("This is an error!") or LogBackend.warning() out of the LogVerbosity enum
@@ -62,6 +63,10 @@ class LogBackend:
 
   def __call__(self, *args):
     self.info(*args)
+
+  @property
+  def blockLevel(self):
+      return len(self.printedBlocks) + len(self.newBlocks)
 
   def addLogSink(self, sink):
     """
@@ -76,27 +81,31 @@ class LogBackend:
 
   def addLogBlock(self, block):
     """Add a log block to the current logging context."""
-    self.blockStack.append(block)
+    self.newBlocks.append(block)
 
   def removeLogBlock(self, block):
     """Remove a log block from the current logging context. if appropriate, the log block message will be printed."""
-    if self.blockStack[-1] == block:
-      if block.printed is True:  # Block was printed so we need to print out that we close this block now
-        blockInfo = {
-          "blockLevel": len(self.blockStack) - 1,  # Decrement by one so the first LogBlock is at indentation 0
-          "name": block.name,
-          "isOpening": False
-        }
-        for sink in self.sinks:
-          sink.log_block(**blockInfo)
-      self.blockStack.pop()
+
+    def doRemove(stack, *, broadcastTo):
+      assert block == stack[-1], """Invalid stack order: Given block is not the last that was opened!
+                                    You should always use `with LogBlock(...):` whenever possible.
+                                 """
+      # Pop the block from the stack.
+      stack.pop()
+      for sink in broadcastTo:
+        sink.logBlock(block=block, isOpening=False)
+
+    assert self.blockLevel > 0, "Cannot remove any log blocks: the block stack is empty!"
+
+    if len(self.newBlocks) > 0:
+      doRemove(self.newBlocks, broadcastTo=tuple())
     else:
-      raise ValueError("The given block is not the last Element in the stack!")
+      doRemove(self.printedBlocks, broadcastTo=self.sinks)
 
   def start_progress(self, expected_size, progress_char="=", bar_template=progress.BAR_TEMPLATE):
     """Creates a progress bar."""
-    self.prev_bar_template = progress.BAR_TEMPLATE
-    progress.BAR_TEMPLATE = bar_template
+    self.prevBarTemplate = progress.BAR_TEMPLATE
+    progress.BAR_TEMPLATE = " " * self.blockLevel + bar_template
     self.progress_bar = progress.Bar(expected_size=expected_size, filled_char=progress_char)
 
   def set_progress(self, progressValue):
@@ -109,30 +118,28 @@ class LogBackend:
     if self.progress_bar:
       self.progress_bar.done()
       self.progress_bar = None
-      progress.BAR_TEMPLATE = self.prev_bar_template
+      progress.BAR_TEMPLATE = self.prevBarTemplate
 
-  def log_message(self, verbosity, message):
+  def logMessage(self, verbosity, message):
     """Raise the logging event."""
-    if not self.quiet and verbosity <= self.verbosity:
-      logInfo = {
-        "message": message,
-        "verbosity": verbosity,
-        "blockLevel": len(self.blockStack)
-      }
-      for block in reversed(self.blockStack):
-        if block.printed is False:
-          block.printed = True
-          blockInfo = {
-            "blockLevel": len(self.blockStack) - 1,  # Decrement by one so the first LogBlock is at indentation 0
-            "name": block.name,
-            "isOpening": True
-          }
-          for sink in self.sinks:
-            sink.log_block(**blockInfo)
-        else:
-          break  # We reached the position in the stack where all messages are printed so stop
+    if self.quiet or verbosity > self.verbosity:
+      return
+
+    # Log new blocks.
+    for block in self.newBlocks:
       for sink in self.sinks:
-        sink.log_message(**logInfo)
+        sink.logBlock(block=block, isOpening=True)
+    # Add all new blocks to the list of printed blocks.
+    self.printedBlocks += self.newBlocks
+    # The current new blocks are no longer new; Clear it.
+    self.newBlocks = []
+
+    # Broadcast the actual log message.
+    for sink in self.sinks:
+      sink.logMessage(message=message,
+                      verbosity=verbosity,
+                      blockLevel=self.blockLevel)
+
 
 # Create a global LogBackend
 log = LogBackend()
@@ -141,16 +148,16 @@ log = LogBackend()
 class StdOutSink:
   """Standard log sink that prints to `stdout`."""
 
-  def log_message(self, *, verbosity, message, blockLevel):
+  def logMessage(self, *, verbosity, message, blockLevel):
     """Handle the logging event."""
     output = sys.stdout
     if verbosity <= LogVerbosity.Warning:
       output = sys.stderr
     output.write("{0}{1}\n".format("  " * blockLevel, message))
 
-  def log_block(self, *, blockLevel, name, isOpening):
+  def logBlock(self, *, block, isOpening):
     """Handle the log block event."""
-    sys.stdout.write("{0}{1} {2}\n".format("  " * blockLevel, "+++" if isOpening else "---", name))
+    sys.stdout.write("{0}{1} {2}\n".format("  " * block.level, "+++" if isOpening else "---", block.name))
 
 
 class LogBlock:
@@ -167,10 +174,10 @@ class LogBlock:
     --- Hello
   """
 
-  def __init__(self, name, backend=log):
-    self.printed = False
+  def __init__(self, name, *, backend=log):
     self.name = name
-    self.backend = log
+    self.backend = backend
+    self.level = self.backend.blockLevel
 
   def __enter__(self):
     self.backend.addLogBlock(self)
