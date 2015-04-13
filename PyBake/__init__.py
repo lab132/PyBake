@@ -70,6 +70,16 @@ zipCompressionLookup = {
 }
 
 
+byteSuffixLookup = [
+  "B",
+  "KiB",
+  "MiB",
+  "GiB",
+  "TiB",
+  "PiB",
+]
+
+
 recipes = []
 
 
@@ -296,7 +306,7 @@ class PastryDesc:
 
 
 class Pastry(PastryDesc):
-  """docstring for Pastry"""
+  """Describes a pastry and its ingredients."""
   def __init__(self, *, name, version, dependencies=None, ingredients=None):
     super().__init__(name=name, version=version, dependencies=dependencies)
     self.ingredients = ingredients or []

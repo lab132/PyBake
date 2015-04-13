@@ -49,7 +49,7 @@ class LogBackend:
     self.quiet = quiet
     self.printedBlocks = []
     self.newBlocks = []
-    self.progress_bar = None
+    self.progressBar = None
     self.prevBarTemplate = None
 
     def create_log_message_function(value):
@@ -87,7 +87,7 @@ class LogBackend:
     """Remove a log block from the current logging context. if appropriate, the log block message will be printed."""
 
     def doRemove(stack, *, broadcastTo):
-      assert block == stack[-1], """Invalid stack order: Given block is not the last that was opened!
+      assert block is stack[-1], """Invalid stack order: Given block is not the last that was opened!
                                     You should always use `with LogBlock(...):` whenever possible.
                                  """
       # Pop the block from the stack.
@@ -102,22 +102,22 @@ class LogBackend:
     else:
       doRemove(self.printedBlocks, broadcastTo=self.sinks)
 
-  def start_progress(self, expected_size, progress_char="=", bar_template=progress.BAR_TEMPLATE):
+  def start_progress(self, expectedSize, progressChar="=", barTemplate=progress.BAR_TEMPLATE):
     """Creates a progress bar."""
     self.prevBarTemplate = progress.BAR_TEMPLATE
-    progress.BAR_TEMPLATE = " " * self.blockLevel + bar_template
-    self.progress_bar = progress.Bar(expected_size=expected_size, filled_char=progress_char)
+    progress.BAR_TEMPLATE = "  " * self.blockLevel + barTemplate
+    self.progressBar = progress.Bar(expected_size=expectedSize, filled_char=progressChar)
 
   def set_progress(self, progressValue):
     """Sets the progress of the current progress bar if any."""
-    if self.progress_bar:
-      self.progress_bar.show(progressValue)
+    if self.progressBar:
+      self.progressBar.show(progressValue)
 
   def end_progress(self):
     """Completes the progress."""
-    if self.progress_bar:
-      self.progress_bar.done()
-      self.progress_bar = None
+    if self.progressBar:
+      self.progressBar.done()
+      self.progressBar = None
       progress.BAR_TEMPLATE = self.prevBarTemplate
 
   def logMessage(self, verbosity, message):
