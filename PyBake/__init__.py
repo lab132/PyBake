@@ -276,10 +276,9 @@ class ChangeDir:
 class PastryDesc:
   """Describes a pastry (a package)."""
 
-  def __init__(self, *, name, version, dependencies=None):
+  def __init__(self, *, name, version):
     self.name = name
     self.version = version
-    self.dependencies = dependencies or []
 
   @property
   def path(self):
@@ -295,9 +294,7 @@ class PastryDesc:
     return "{} version {}".format(self.name, self.version)
 
   def __repr__(self):
-    return "PastryDesc(name={}, version={}, dependencies={})".format(self.name,
-                                                                     self.version,
-                                                                     self.dependencies)
+    return "PastryDesc(name={}, version={})".format(self.name, self.version)
 
   @staticmethod
   def from_dict(desc):
@@ -308,7 +305,8 @@ class PastryDesc:
 class Pastry(PastryDesc):
   """Describes a pastry and its ingredients."""
   def __init__(self, *, name, version, dependencies=None, ingredients=None):
-    super().__init__(name=name, version=version, dependencies=dependencies)
+    super().__init__(name=name, version=version)
+    self.dependencies = dependencies or []
     self.ingredients = ingredients or []
 
   def __repr__(self):
@@ -438,3 +436,57 @@ class MenuBackend:
     """Gets a pastry from the menu, if it exists"""
     log.info("pastry_data: {0} version {1}".format(pastry_name, pastry_version))
     return self.driver.get_pastry(errors, pastry_name, pastry_version)
+
+class Menu:
+  """
+  Lookup table for existing pastries.
+
+  Keys: A `PastryDesc` instance..
+  Values: A `Path` instance.
+
+  Takes care of saving and loading it to/from file using the `open()` and `close()` methods.
+
+  Example:
+    ```
+    lookup = Menu(".pastries/myMenu.json")
+    pastryFilePath = lookup.get("ezEngine", "v0.6.0")
+    with zipfile.ZipFile(pastryFilePath.as_posix()) as pastryFile:
+      # Process zip file here.
+      ...
+    ```
+  """
+  defaultRegistryName = "menu.json"
+  defaultRegistryPath = Path(".pastries") / defaultRegistryName
+
+  def __init__(self, registryPath=None):
+    self.registryPath = Path(registryPath or Menu.defaultRegistryPath)
+    self.registry = []
+
+  def open(self):
+    if not self.registryPath.exists():
+      self.registryPath.safe_mkdir(parents=True)
+
+    if self.registryPath.is_dir():
+      self.registryPath /= Menu.defaultRegistryName
+      self.registryPath.touch()
+      self.registry = {}
+      return
+    with self.registryPath.open("r") as registryFile:
+      self.registry = json.load(registryFile)
+
+  def close(self):
+    with self.registryPath.open("w") as registryFile:
+      json.dump(self.registry, registryFile, cls=PastryJSONEncoder, indent=2, sort_keys=True)
+
+  def add(self, pastryDesc):
+    if not exists(pastryDesc):
+      self.registry.append(pastryDesc)
+
+  def get(self, pastryDesc, default=None):
+    for entry in self.registry:
+      if entry == pastryDesc:
+        return entry
+    return default
+
+  def exists(self, pastryDesc):
+    return get(pastryDesc, default=None) is not None
