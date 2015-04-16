@@ -259,4 +259,5 @@ FakesAssemblies/
 # JetBrains PyCharm IDE project files
 .idea
 
+tests/temp/
 .pastries
