@@ -9,37 +9,39 @@ import zipfile
 import requests
 
 # Note: This function could run concurrently.
-def uploadPastry(pastryPath, server):
+def uploadPastry(menu, pastry, server):
   """
   Uploads a pastry to the server.
   """
+  pastryPath = menu.makePath(pastry)
   # Extract pastry.json data from the pastry package (pastry.zip),
-  # and convert this data to a python dictionary, which we send to the server.
+  # to validate the pastry.
   with pastryPath.open("rb") as pastryFile:
     with zipfile.ZipFile(pastryFile) as zip_file:
       # Note: For some reason, json.load does not accept the result
       #       of ZipFile.open, so we use ZipFile.read instead to load
       #       the entire file as bytes, convert it to a string, and parse that.
       pastryBytes = zip_file.read("pastry.json")
-      data = json.loads(pastryBytes.decode("UTF-8"))
+      zippedPastry = PastryDesc(data=json.loads(pastryBytes.decode("UTF-8")))
+
+  if zippedPastry != pastry:
+    log.error("")
+    return
 
   # Construct the `files` dictionary with the pastry package (.zip).
   files = {"pastry": pastryPath.open("rb")}
 
   postUrl = "{}/upload_pastry".format(server)
-  log.info("Uploading...")
-  log.dev("Sending data: {}".format(data))
-  # Finally send the post request with some meta and file data.
-  response = requests.post(postUrl, data=data, files=files)
+  with LogBlock("Uploading {}".format(pastry)):
+    log.info("Sending data...")
+    # Send the post request with some meta data and the actual file data.
+    response = requests.post(postUrl, data=dict(pastry), files=files)
 
-  with LogBlock("Response"):
-    log.dev("Status Code: {}".format(response.status_code))
-    log.dev(response.json())
-
-  if response.status_code == requests.codes.ok:
-    log.success("Successful deposit.")
-  else:
-    log.error("Failed to upload pastry.")
+    log.dev("Status: {}\n{}".format(response.status_code, response.text))
+    if response.ok:
+      log.success("Successful deposit.")
+    else:
+      log.error("Failed to upload pastry.")
 
 
 def run(*, pastryPaths, config, **kwargs):
@@ -48,21 +50,12 @@ def run(*, pastryPaths, config, **kwargs):
   # Import the config script.
   log.debug("Importing config script '{}.py'".format(config))
   config = import_module(config)
+  server = config.server
 
-  with LogBlock("Server: {}".format(config.server)):
+  with LogBlock("Server: {}".format(server)):
     for pastryPath in pastryPaths:
-      # Make sure the path exists.
-      pastryPath = pastryPath.resolve()
-
-      toUpload = None
-      if pastryPath.is_dir():
-        toUpload = pastryPath.iterdir()
-      else:
-        toUpload = (pastryPath,)
-      for pastry in toUpload:
-        # TODO Properly validate `pastry` to actually be a pastry?
-        if pastry.suffix != ".zip":
-          log.warning("Given file is not a pastry. Ignoring: {}".format(pastry.as_posix()))
-          continue
-        with LogBlock("Pastry Upload: {}".format(pastry.as_posix())):
-          uploadPastry(pastry, config.server)
+      pastryPath.safe_mkdir(parents=True)
+      menu = Menu(pastryPath)
+      menu.load()
+      for pastry in menu.registry:
+        uploadPastry(menu, pastry, server)

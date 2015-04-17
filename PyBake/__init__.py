@@ -223,7 +223,7 @@ class PastryJSONEncoder(json.JSONEncoder):
 
   def default(self, obj):
     """Called in the process of serializing python data structures to JSON."""
-    if isinstance(obj, Platform):
+    if isinstance(obj, Platform) or isinstance(obj, PastryDesc):
       return dict(obj)
     if isinstance(obj, Path):
       return obj.as_posix()
@@ -274,45 +274,72 @@ class ChangeDir:
 
 
 class PastryDesc:
-  """Describes a pastry (a package)."""
+  """
+  Describes a pastry (a package).
+  """
 
-  def __init__(self, *, name, version, dependencies=None):
+  def __init__(self, data=None, *, name=None, version=None):
+    """
+    Instantiate a pastry description from either a data dict, or a name and version.
+    :param data: A dict that contains a "name" and "version" key.
+    :param name: The
+    :param version:
+    :return: A pastry desc instance.
+
+    :example:
+    data1 = {"name": "foo", "version": "v0.1.0"}
+    p1 = Pastry(data1)
+    p2 = Pastry(name="foo", version="v0.1.0")
+    """
+    if data:
+      name = data["name"]
+      version = data["version"]
     self.name = name
     self.version = version
-    self.dependencies = dependencies or []
 
   @property
   def path(self):
     """Construct the path of this pastry from its name and version."""
     return Path(createFilename(self.name, self.version) + ".zip")
 
-  @property
-  def shopData(self):
-    """Returns a dictionary containing all relevent data the shop (server) needs."""
-    return dict(name=self.name, version=self.version)
+  def __lt__(self, other):
+    return self.name < other.name or self.version < other.version
+
+  def __eq__(self, other):
+    return self.name == other.name and self.version == other.version
+
+  def __iter__(self):
+    """
+    Helps to turn this pastry desc into a dict.
+    :example:
+    p = Pastry(...)
+    d = dict(p)
+    """
+    yield ("name", self.name)
+    yield ("version", self.version)
 
   def __str__(self):
-    return "{} version {}".format(self.name, self.version)
+    return "{} {}".format(self.name, self.version)
 
   def __repr__(self):
-    return "PastryDesc(name={}, version={}, dependencies={})".format(self.name,
-                                                                     self.version,
-                                                                     self.dependencies)
-
-  @staticmethod
-  def from_dict(desc):
-    """Extract data from a dictionary and instanciate a `Pastry` instance from that."""
-    return Pastry(name=desc["name"], version=desc["version"])
+    return "PastryDesc(name='{}', version='{}')".format(self.name, self.version)
 
 
 class Pastry(PastryDesc):
   """Describes a pastry and its ingredients."""
   def __init__(self, *, name, version, dependencies=None, ingredients=None):
-    super().__init__(name=name, version=version, dependencies=dependencies)
+    super().__init__(name=name, version=version)
+    self.dependencies = dependencies or []
     self.ingredients = ingredients or []
 
+  def __iter__(self):
+    yield ("name", self.name)
+    yield ("version", self.version)
+    yield ("dependencies", self.dependencies)
+    yield ("ingredients", self.ingredients)
+
   def __repr__(self):
-    return "Pastry(name={}, version={}, dependencies={}, ingredients={})".format(self.name,
+    return "Pastry(name='{}', version='{}', dependencies='{}', ingredients='{}')".format(self.name,
                                                                                  self.version,
                                                                                  self.dependencies,
                                                                                  self.ingredients)
@@ -344,7 +371,7 @@ class ShoppingList:
       shoppingList.serverConfig = ServerConfig(data["shop"])
 
       for pastryDesc in data["pastries"]:
-        shoppingList.pastries.append(Pastry.from_dict(pastryDesc))
+        shoppingList.pastries.append(Pastry(pastryDesc))
       return shoppingList
 
 
@@ -438,3 +465,159 @@ class MenuBackend:
     """Gets a pastry from the menu, if it exists"""
     log.info("pastry_data: {0} version {1}".format(pastry_name, pastry_version))
     return self.driver.get_pastry(errors, pastry_name, pastry_version)
+
+class Menu:
+  """
+  Lookup table for existing pastries.
+
+  Keys: A `PastryDesc` instance..
+  Values: A `Path` instance.
+
+  Takes care of saving and loading it to/from file using the `open()` and `close()` methods.
+
+  Example:
+    ```
+    menu = Menu(".pastries")
+    menu.load(".pastries/myMenu.json")
+    pastryFilePath = menu.get("ezEngine", "v0.6.0")
+    with zipfile.ZipFile(pastryFilePath.as_posix()) as pastryFile:
+      # Process zip file here.
+      ...
+    ```
+  """
+  defaultPastriesDirPath = Path(".pastries")
+  defaultFileName = "menu.json"
+
+  @classmethod
+  def getDfeaultMenuFilePath(cls):
+    return  cls.defaultPastriesDirPath / cls.defaultFileName
+
+  def __init__(self, menuFilePath=None):
+    self.registry = []
+    self.filePath = Path(menuFilePath or Menu.defaultPastriesDirPath / Menu.defaultFileName)
+    if self.filePath.is_dir():
+      self.filePath /= Menu.defaultFileName
+      log.info("Given menu file path is a directory. "
+               "Using that as pastries directory. "
+               "New file path: {}".format(self.filePath.as_posix()))
+    if not self.filePath.exists():
+      log.info("Creating menu file because it does not exist yet: {}".format(self.filePath.as_posix()))
+      self.filePath.parent.safe_mkdir(parents=True)
+      with self.filePath.open("w") as newFile:
+        json.dump([], newFile)
+    # Make sure we have an absolute file path.
+    self.filePath = self.filePath.resolve()
+
+  @property
+  def pastryDirPath(self):
+    return self.filePath.parent
+
+  @pastryDirPath.setter
+  def pastryDirPath(self, value):
+    self.filePath = value / self.filePath.name
+
+  def load(self):
+    """
+    Load menu contents from a file.
+
+    If `menuFilePath` is omitted or `None`, The default is used: `self.pastriesDirPath / Menu.defaultPastriesRoot`
+
+    Will not attempt any file write operations.
+
+    Returns the number of new entries.
+    """
+    filePath = self.filePath
+    if not filePath.exists():
+      return -1
+    with filePath.open("r") as registryFile:
+      loadedRegistry = json.load(registryFile)
+    numNewEntries = 0
+    # Using self.add will prevent adding duplicates.
+    for entry in loadedRegistry:
+      self.add(PastryDesc(entry))
+      numNewEntries += 1
+    return numNewEntries
+
+  def save(self):
+    """
+    Save the menu to disk.
+
+    If `menuFilePath` is omitted or `None`, The default is used: `Menu.defaultPastriesRoot`
+    """
+    filePath = self.filePath
+    if not filePath.exists():
+      log.warning("Creating menu file path that did not exist yet: {}".format(filePath.as_posix()))
+      filePath.parent.safe_mkdir(parents=True)
+    elif filePath.is_dir():
+      filePath /= Menu.defaultFileName
+      log.warning("Current menu file path is a directory. Using file path: {}".format(filePath.as_posix()))
+    with filePath.open("w") as registryFile:
+      json.dump(self.registry, registryFile, cls=PastryJSONEncoder, indent=2, sort_keys=True)
+
+  def add(self, pastryDesc):
+    """
+    Add a pastry to the menu.
+
+    If the pastry already exists, it is ignored and `False` is returned.
+    """
+    assert hasattr(pastryDesc, "name"), "Need a PastryDesc compatible instance!"
+    assert hasattr(pastryDesc, "version"), "Need a PastryDesc compatible instance!"
+    if not self.exists(pastryDesc):
+      self.registry.append(pastryDesc)
+      return True
+    return False
+
+  def remove(self, pastryDesc):
+    """
+    Try to remove the given pastry.
+
+    :return: `False` on failure.
+    """
+    try:
+      self.registry.remove(pastryDesc)
+    except ValueError:
+      return False
+    return True
+
+  def get(self, pastryDesc, default=None):
+    """
+    Try get the entry for the given pastry.
+
+    :return: `default` if no such pastry exists.
+    """
+    try:
+      i = self.registry.index(pastryDesc)
+    except ValueError:
+      return default
+    return self.registry[i]
+
+  def makePath(self, pastryDesc):
+    """
+    Creates a path for the pastry with respect to the menu dir.
+    :param pastryDesc: The pastry. May not be `None`
+    :return: The final path for the pastry.
+    :example:
+    >>> menu = Menu()
+    >>> = menu.makePath(PastryDesc(name="foo", version="v0.1.0"))
+    "<current_working_dir>/.pastries/foo_v0_1_0.zip"
+    """
+    assert pastryDesc is not None
+    return self.filePath.parent / pastryDesc.path
+
+  def exists(self, pastryDesc):
+    """
+    Whether the pastry exists or not.
+    """
+    return self.get(pastryDesc, default=None) is not None
+
+  def numEntries(self):
+    """
+    Returns the number of current menu entries.
+    """
+    return len(self.registry)
+
+  def clear(self):
+    """
+    Clear the registry entries.
+    """
+    self.registry.clear()

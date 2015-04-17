@@ -160,6 +160,43 @@ class StdOutSink:
     sys.stdout.write("{0}{1} {2}\n".format("  " * block.level, "+++" if isOpening else "---", block.name))
 
 
+class ScopedLogSink:
+  """
+  Log sink that can be used for a `with` scope.
+
+  Useful when monitoring the log messages for just a small code frame.
+
+  :example:
+  with ScopedLogSink(log) as sink:
+    doSomethingThatLogsStuffGlobally()
+    globalErrors.extend(sink.logged["error"])
+  """
+  def __init__(self, logBackend=None):
+    self.logBacked = logBackend or log
+    self.logged = {}
+    for logLevelName in LogLevel.__members__.keys():
+      self.logged[logLevelName.lower()] = []
+
+  def __enter__(self):
+    self.logBacked.addLogSink(self)
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    self.logBacked.removeLogSink(self)
+
+  def __iter__(self):
+    for key, value in self.logged:
+      yield (key, value)
+
+  def logMessage(self, *, verbosity, message, blockLevel):
+    """Handle the logging event."""
+    if verbosity >= LogLevel.Warning:
+      self.logged["error"].append(message)
+
+  def logBlock(self, *, block, isOpening):
+    pass
+
+
 class LogBlock:
   """
   Create a log block in the current logging context.
