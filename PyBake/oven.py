@@ -27,12 +27,9 @@ class Pot:
     return listOfIngredients
 
 
-def writePastryJson(zipFile, name, version):
+def writePastryJson(zipFile, pastry):
   """Helper function of `zipBaker` that writes a pastry.json file to the given `zipFile`."""
   log.info("Writing pastry.json...")
-  pastry = {}
-  pastry["name"] = name
-  pastry["version"] = version
   pastryJSON = json.dumps(pastry, indent=2, sort_keys=True, cls=PastryJSONEncoder)
   zipFile.writestr("pastry.json", bytes(pastryJSON, "UTF-8"))
 
@@ -53,22 +50,20 @@ def zipIngredients(zipFile, ingredients):
     zipFile.write(path)
 
 
-def zipBaker(*, outDirPath, pot, options):
+def zipBaker(*, menu, pot, options):
   """Processes ingredients in a pot and creates pastries from that."""
-
-  log.info("Creating directory for pastries: {}".format(outDirPath.as_posix()))
-  outDirPath.safe_mkdir(parents=True)
-
   with LogBlock("Baking Pastries (Zip)"):
     for key, ingredients in pot.ingredients.items():
-      name = key[0]
-      version = key[1]
-      with LogBlock("{} version {} with {} ingredients".format(name, version, len(ingredients))):
-        zipFilePath = outDirPath / createFilename(name, version, fileExtension=".zip")
+      pastry = PastryDesc(name=key[0], version=key[1])
+      if menu.add(pastry) is False:
+        continue
+      with LogBlock("Pastry: {} with {} ingredients".format(pastry, len(ingredients))):
+        zipFilePath = menu.makePath(pastry)
         with zipfile.ZipFile(zipFilePath.as_posix(), "w", compression=options["compression"]) as zipFile:
-          writePastryJson(zipFile, name, version)
+          writePastryJson(zipFile, pastry)
           writeIngredientsJson(zipFile, ingredients)
           zipIngredients(zipFile, ingredients)
+
         log.success("Done baking pastry: {}".format(zipFilePath.as_posix()))
 
 
@@ -110,5 +105,12 @@ def run(*,                   # Keyword arguments only.
         # Call the recipe with our pot.
         rcp(pot)
 
+    # We always treat `output` as a directory.
+    output.safe_mkdir(parents=True)
+
+    menu = Menu(output)
+    log.info("Menu file path: {}".format(menu.filePath.as_posix()))
+    menu.load()
     # All ingredients are collected in the pot now, so the baker can start working.
-    bakerFunc(outDirPath=output, pot=pot, options=kwargs)
+    bakerFunc(menu=menu, pot=pot, options=kwargs)
+    menu.save()

@@ -26,12 +26,12 @@ class MenuTests(TestCase):
       m.add(dict(p1))
 
   def test_LoadSave(self):
-    m = Menu()
+    m = Menu("MenuTests/test_LoadSave.json")
     p1 = PastryDesc(name="foo", version="v0.1.0")
     m.add(p1)
-    m.save("MenuTests/test_LoadSave.json")
+    m.save()
     m.clear()
     self.assertEqual(m.numEntries(), 0)
-    m.load("MenuTests/test_LoadSave.json")
+    m.load()
     self.assertEqual(m.numEntries(), 1)
     self.assertEqual(m.get(p1), p1)

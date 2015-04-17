@@ -76,15 +76,20 @@ def run(*, location, shopping_list="shoppingList", **kwargs):
     server_config = try_getattr(shopping_list, ("server_config", "server"), raise_error=True)
     pastries = try_getattr(shopping_list, ("pastries", "pastry"), raise_error=True)
 
-    pastries_root = get_location_path(location) / ".pastries"
+    pastries_root = get_location_path(location) / Menu.defaultPastriesDirPath
     pastries_root.safe_mkdir(parents=True)
+    menu = Menu(pastries_root)
+    menu.load()
 
     for pastry in pastries:
+      if menu.exists(pastry):
+        log.dev("Pastry already exists locally: {}".format(pastry))
+        continue
       with LogBlock("Requesting {}".format(pastry)):
         response = requests.post("{}/get_pastry".format(server_config),
-                                 data=pastry.shopData,
+                                 data=dict(pastry),
                                  stream=True)
-        if response.status_code != requests.codes.ok:
+        if not response.ok:
           log.error("Request failed:\n{}".format(response.text))
           return
 
@@ -92,7 +97,7 @@ def run(*, location, shopping_list="shoppingList", **kwargs):
         if "content-length" in response.headers:
           size = int(response.headers["content-length"])
 
-        out_path = pastries_root / pastry.path
+        out_path = menu.makePath(pastry)
         log.info("Saving to: {}".format(out_path.as_posix()))
 
         with ByteProgressListener(maxSize=size) as progress:
@@ -101,4 +106,7 @@ def run(*, location, shopping_list="shoppingList", **kwargs):
             for chunk in response.iter_content(chunk_size):
               out_file.write(chunk)
               progress(chunk_size)
+        menu.add(pastry)
         log.success("Pastry received.")
+
+    menu.save()

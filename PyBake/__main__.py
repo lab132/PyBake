@@ -102,8 +102,8 @@ ovenParser.add_argument("recipes_script",
                         nargs="?",
                         default=Path("recipes.py"),
                         help="Path to the recipes script. Default: 'recipes.py'")
-ovenParser.add_argument("-o", "--output", type=Path, default=Path(".pastries"),
-                        help="The directory to store the pastries in. Defaults to '.pastries'.")
+ovenParser.add_argument("-o", "--output", type=Path, default=Path(".pastries/"),
+                        help="The directory to store the pastries in. Defaults to '.pastries/'.")
 ovenParser.add_argument("-d", "--working-dir",
                         type=Path,
                         nargs="?",

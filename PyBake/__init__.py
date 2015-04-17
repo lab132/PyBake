@@ -371,7 +371,7 @@ class ShoppingList:
       shoppingList.serverConfig = ServerConfig(data["shop"])
 
       for pastryDesc in data["pastries"]:
-        shoppingList.pastries.append(Pastry.from_dict(pastryDesc))
+        shoppingList.pastries.append(Pastry(pastryDesc))
       return shoppingList
 
 
@@ -477,7 +477,7 @@ class Menu:
 
   Example:
     ```
-    menu = Menu()
+    menu = Menu(".pastries")
     menu.load(".pastries/myMenu.json")
     pastryFilePath = menu.get("ezEngine", "v0.6.0")
     with zipfile.ZipFile(pastryFilePath.as_posix()) as pastryFile:
@@ -485,30 +485,51 @@ class Menu:
       ...
     ```
   """
-  defaultRegistryName = "menu.json"
-  defaultMenuFilePath = Path(".pastries") / defaultRegistryName
+  defaultPastriesDirPath = Path(".pastries")
+  defaultFileName = "menu.json"
 
-  def __init__(self, registryPath=None):
+  @classmethod
+  def getDfeaultMenuFilePath(cls):
+    return  cls.defaultPastriesDirPath / cls.defaultFileName
+
+  def __init__(self, menuFilePath=None):
     self.registry = []
+    self.filePath = Path(menuFilePath or Menu.defaultPastriesDirPath / Menu.defaultFileName)
+    if self.filePath.is_dir():
+      self.filePath /= Menu.defaultFileName
+      log.info("Given menu file path is a directory. "
+               "Using that as pastries directory. "
+               "New file path: {}".format(self.filePath.as_posix()))
+    if not self.filePath.exists():
+      log.info("Creating menu file because it does not exist yet: {}".format(self.filePath.as_posix()))
+      self.filePath.parent.safe_mkdir(parents=True)
+      with self.filePath.open("w") as newFile:
+        json.dump([], newFile)
+    # Make sure we have an absolute file path.
+    self.filePath = self.filePath.resolve()
 
-  def load(self, menuFilePath=None):
+  @property
+  def pastryDirPath(self):
+    return self.filePath.parent
+
+  @pastryDirPath.setter
+  def pastryDirPath(self, value):
+    self.filePath = value / self.filePath.name
+
+  def load(self):
     """
     Load menu contents from a file.
 
-    If `menuFilePath` is omitted or `None`, The default is used: `Menu.defaultMenuFilePath`
+    If `menuFilePath` is omitted or `None`, The default is used: `self.pastriesDirPath / Menu.defaultPastriesRoot`
 
     Will not attempt any file write operations.
 
     Returns the number of new entries.
     """
-    menuFilePath = Path(menuFilePath or Menu.defaultMenuFilePath)
-
-    if not menuFilePath.exists():
+    filePath = self.filePath
+    if not filePath.exists():
       return -1
-
-    if menuFilePath.is_dir():
-      menuFilePath /= Menu.defaultRegistryName
-    with menuFilePath.open("r") as registryFile:
+    with filePath.open("r") as registryFile:
       loadedRegistry = json.load(registryFile)
     numNewEntries = 0
     # Using self.add will prevent adding duplicates.
@@ -517,15 +538,20 @@ class Menu:
       numNewEntries += 1
     return numNewEntries
 
-  def save(self, menuFilePath=None):
+  def save(self):
     """
     Save the menu to disk.
 
-    If `menuFilePath` is omitted or `None`, The default is used: `Menu.defaultMenuFilePath`
+    If `menuFilePath` is omitted or `None`, The default is used: `Menu.defaultPastriesRoot`
     """
-    menuFilePath = Path(menuFilePath or Menu.defaultMenuFilePath)
-    menuFilePath.parent.safe_mkdir(parents=True)
-    with menuFilePath.open("w") as registryFile:
+    filePath = self.filePath
+    if not filePath.exists():
+      log.warning("Creating menu file path that did not exist yet: {}".format(filePath.as_posix()))
+      filePath.parent.safe_mkdir(parents=True)
+    elif filePath.is_dir():
+      filePath /= Menu.defaultFileName
+      log.warning("Current menu file path is a directory. Using file path: {}".format(filePath.as_posix()))
+    with filePath.open("w") as registryFile:
       json.dump(self.registry, registryFile, cls=PastryJSONEncoder, indent=2, sort_keys=True)
 
   def add(self, pastryDesc):
@@ -545,7 +571,7 @@ class Menu:
     """
     Try to remove the given pastry.
 
-    Will return `False` on failure.
+    :return: `False` on failure.
     """
     try:
       self.registry.remove(pastryDesc)
@@ -557,13 +583,26 @@ class Menu:
     """
     Try get the entry for the given pastry.
 
-    Will return `default` if no such pastry exists.
+    :return: `default` if no such pastry exists.
     """
     try:
       i = self.registry.index(pastryDesc)
     except ValueError:
       return default
     return self.registry[i]
+
+  def makePath(self, pastryDesc):
+    """
+    Creates a path for the pastry with respect to the menu dir.
+    :param pastryDesc: The pastry. May not be `None`
+    :return: The final path for the pastry.
+    :example:
+    >>> menu = Menu()
+    >>> = menu.makePath(PastryDesc(name="foo", version="v0.1.0"))
+    "<current_working_dir>/.pastries/foo_v0_1_0.zip"
+    """
+    assert pastryDesc is not None
+    return self.filePath.parent / pastryDesc.path
 
   def exists(self, pastryDesc):
     """
@@ -578,4 +617,7 @@ class Menu:
     return len(self.registry)
 
   def clear(self):
+    """
+    Clear the registry entries.
+    """
     self.registry.clear()
