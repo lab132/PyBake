@@ -5,6 +5,7 @@ The place to get your daily pastries!
 from PyBake import *
 from os.path import expanduser
 from importlib import import_module
+from zipfile import ZipFile
 
 
 def get_location_path(loc):
@@ -18,7 +19,9 @@ def get_location_path(loc):
 
 def downloadPastries(menu, pastries, server):
   import requests
-  for pastry in pastries:
+  newPastries = []
+  for pastryData in pastries:
+    pastry = PastryDesc(pastryData)
     if menu.exists(pastry):
       log.dev("Pastry already exists locally: {}".format(pastry))
       continue
@@ -44,8 +47,24 @@ def downloadPastries(menu, pastries, server):
             out_file.write(chunk)
             progress(chunk_size)
       menu.add(pastry)
+      newPastries.append(pastryData)
       log.success("Pastry received.")
+  return newPastries
 
+
+def installPastries(menu, pastries):
+  for pastryData in pastries:
+    pastry = PastryDesc(pastryData)
+    pastryDestination = pastryData.get("destination", pastryData.get("dest", None))
+    pastryDestination = Path(pastryDestination)
+    pastryDestination.safe_mkdir(parents=True)
+    pastryPath = menu.makePath(pastry)
+    with LogBlock("Installing Pastry"):
+      log.info("{} => {}".format(pastryPath, pastryDestination))
+      with ZipFile(pastryPath.as_posix()) as pastryFile:
+        blackList = ("pastry.json", "ingredients.json")
+        filteredFiles = [f for f in pastryFile.namelist() if f not in blackList]
+        pastryFile.extractall(pastryDestination.as_posix(), members=filteredFiles)
 
 
 class ByteProgressListener:
@@ -102,8 +121,6 @@ class ByteProgressListener:
 def run(*, location, shopping_list="shoppingList", **kwargs):
   """Gets pastries from the shop using the shopping list"""
   with LogBlock("Basket"):
-    import requests
-
     shopping_list = import_module(shopping_list)
     server = try_getattr(shopping_list, ("server_config", "server"), raise_error=True)
     pastries = try_getattr(shopping_list, ("pastries", "pastry"), raise_error=True)
@@ -112,5 +129,6 @@ def run(*, location, shopping_list="shoppingList", **kwargs):
     pastries_root.safe_mkdir(parents=True)
     menu = Menu(pastries_root)
     menu.load()
-    downloadPastries(menu, pastries, server)
+    newPastries = downloadPastries(menu, pastries, server)
     menu.save()
+    installPastries(menu, pastries)
