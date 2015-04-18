@@ -256,4 +256,8 @@ FakesAssemblies/
 *.sublime-project
 *.sublime-workspace
 
+# JetBrains PyCharm IDE project files
+.idea
+
+tests/temp/
 .pastries

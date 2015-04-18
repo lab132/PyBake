@@ -8,9 +8,14 @@ local = ServerConfig("http://127.0.0.1:1337")
 server_config = local
 
 pastries = [
-  Pastry.from_dict({
-    "name": "ezEngine",
-    "version": "milestone-6",
-    "location": "thirdParty/ezEngine"
-  })
+  {
+    "name" : "ezEngine_Headers",
+    "version" : "milestone-6",
+    "destination" : "thirdParty/ezEngine"
+  },
+  {
+    "name" : "ezEngine_Bin_Win64Vs2013Debug",
+    "version" : "milestone-6",
+    "destination" : "thirdParty/ezEngine"
+  },
 ]

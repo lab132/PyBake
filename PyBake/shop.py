@@ -7,8 +7,8 @@ from flask import Flask, request, session, g, redirect, url_for, abort, \
 
 import json
 
-from PyBake import Path, MenuBackend, MenuDiskDriver
-from PyBake.logger import log, LogBlock
+from PyBake import Path, Menu, PastryDesc
+from PyBake.logger import log, LogBlock, ScopedLogSink
 from importlib import import_module
 import textwrap
 
@@ -38,10 +38,34 @@ def execute_shop(args):
 
 
 
+def processPastryUpload(menu, pastryDesc, pastryFile):
+  with LogBlock("Processing Pastry Upload: {}".format(pastryDesc)):
+    if menu.exists(pastryDesc):
+      log.info("Pastry already exists. Ignoring.")
+      return
+    # Get the target path on the local system for the pastry.
+    pastryPath = menu.makePath(pastryDesc)
+    # Try saving the pastry.
+    pastryFile.save(pastryPath.as_posix())
+    # Add that pastry to the menu.
+    menu.add(pastryDesc)
+    # Make sure the menu database is up to date.
+    menu.save()
+
+
+def getPastryFilePath(menu, pastryDesc):
+  with LogBlock("Finding Pastry File Path"):
+    if menu.exists(pastryDesc):
+      return menu.makePath(pastryDesc)
+    log.error("Pastry not found.")
+
+
 def Shop(name=__name__):
   """Create the Fask application."""
-  with LogBlock("Shop"):
-    menuBackend = MenuBackend(driver=MenuDiskDriver())
+  with LogBlock("Creating Shop Instance"):
+    menu = Menu()
+    log.info("Full menu file path: {}".format(menu.filePath.as_posix()))
+    menu.load()
 
     # create our little application :)
     app = Flask(name)
@@ -87,7 +111,9 @@ def Shop(name=__name__):
           # `data` is a multi-dict, which is why we need to extract it here.
           name = data["name"][0]
           version = data["version"][0]
-          errors = menuBackend.process_pastry(name, version, files["pastry"])
+          with ScopedLogSink() as sink:
+            processPastryUpload(menu, PastryDesc(name=name, version=version), files["pastry"][0])
+            errors.extend(sink.logged["error"])
 
         if errors and len(errors) != 0:
           returnCode = 400
@@ -119,11 +145,14 @@ def Shop(name=__name__):
         pastry_path = None
         if len(errors) == 0:
           # `data` is a multi-dict, which is why we need to extract it here.
-          name = data["name"][0]
-          version = data["version"][0]
-          pastry_path = menuBackend.get_pastry(errors, name, version)
+          pastryDesc = PastryDesc(name=data["name"][0],
+                                  version=data["version"][0])
+          with ScopedLogSink() as sink:
+            pastry_path = getPastryFilePath(menu, pastryDesc)
+            errors.extend(sink.logged["error"])
 
         if errors and len(errors) != 0:
+          print("errors:", errors)
           response["errors"] = errors
           response["result"] = "Error"
           return jsonify(response), 400
@@ -135,8 +164,9 @@ def Shop(name=__name__):
 
 def run(*, config, **kwargs):
   """Open the shop!"""
-  app = Shop()
+  with LogBlock("Shop"):
+    app = Shop()
 
-  shop_config = import_module(config)
+    shop_config = import_module(config)
 
-  app.run(debug=True, host=shop_config.server.host, port=shop_config.server.port)
+    app.run(debug=True, host=shop_config.server.host, port=shop_config.server.port)

@@ -6,9 +6,6 @@ import argparse
 import textwrap
 from PyBake import Path, version, zipCompressionLookup
 from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock
-import pkgutil
-from importlib import import_module
-import re
 
 # Make sure this module is executed, not imported.
 if __name__ != '__main__':

@@ -6,6 +6,8 @@ from PyBake import *
 from PyBake.logger import *
 from importlib import import_module
 import textwrap
+import zipfile
+import requests
 
 class DepotModuleManager:
   """Module Manager for Depot"""
@@ -34,55 +36,54 @@ class DepotModuleManager:
     depotParser.set_defaults(func=execute_depot)
 
 
-def execute_depot(args):
-  """Execute the `depot` command."""
-  with LogBlock("Depot"):
-    log.debug(args)
-    return run(**vars(args))
+# Note: This function could run concurrently.
+def uploadPastry(menu, pastry, server):
+  """
+  Uploads a pastry to the server.
+  """
+  pastryPath = menu.makePath(pastry)
+  # Extract pastry.json data from the pastry package (pastry.zip),
+  # to validate the pastry.
+  with pastryPath.open("rb") as pastryFile:
+    with zipfile.ZipFile(pastryFile) as zip_file:
+      # Note: For some reason, json.load does not accept the result
+      #       of ZipFile.open, so we use ZipFile.read instead to load
+      #       the entire file as bytes, convert it to a string, and parse that.
+      pastryBytes = zip_file.read("pastry.json")
+      zippedPastry = PastryDesc(data=json.loads(pastryBytes.decode("UTF-8")))
+
+  if zippedPastry != pastry:
+    log.error("")
+    return
+
+  # Construct the `files` dictionary with the pastry package (.zip).
+  files = {"pastry": pastryPath.open("rb")}
+
+  postUrl = "{}/upload_pastry".format(server)
+  with LogBlock("Uploading {}".format(pastry)):
+    log.info("Sending data...")
+    # Send the post request with some meta data and the actual file data.
+    response = requests.post(postUrl, data=dict(pastry), files=files)
+
+    log.dev("Status: {}\n{}".format(response.status_code, response.text))
+    if response.ok:
+      log.success("Successful deposit.")
+    else:
+      log.error("Failed to upload pastry.")
 
 
-#moduleManager = DepotModuleManager()
-
-def run(*, pastry_path, config, **kwargs):
+def run(*, pastryPaths, config, **kwargs):
   """Deposit a pastry in a shop."""
-  import requests
 
   # Import the config script.
   log.debug("Importing config script '{}.py'".format(config))
   config = import_module(config)
+  server = config.server
 
-  # Make sure the path exists.
-  pastry_path = pastry_path.resolve()
-  log.debug("Pastry path: {}".format(pastry_path.as_posix()))
-  log.debug("Pastry name: {}".format(pastry_path.name))
-  if pastry_path.is_dir():
-    log.error("Expected given pastry to be a file, but is a directory!")
-    return
-
-  import zipfile
-
-  # Extract pastry.json data from the pastry package (pastry.zip),
-  # and convert this data to a python dictionary, which we send to the server.
-  with pastry_path.open("rb") as pastry_file:
-    with zipfile.ZipFile(pastry_file) as zip_file:
-      # Note: For some reason, json.load does not accept the result
-      #       of ZipFile.open, so we use ZipFile.read instead to load
-      #       the entire file as bytes, convert it to a string, and parse that.
-      pastry_bytes = zip_file.read("pastry.json")
-      data = json.loads(pastry_bytes.decode("UTF-8"))
-
-  # Construct the `files` dictionary with the pastry package (.zip).
-  files = {"pastry": pastry_path.open("rb")}
-
-  postUrl = "{}/upload_pastry".format(config.server)
-  log.info("Placing deposit with {}...".format(postUrl))
-  log.dev("Sending data: {}".format(data))
-  # Finally send the post request with some meta and file data.
-  response = requests.post(postUrl, data=data, files=files)
-
-  with LogBlock("Response"):
-    log.dev("Status Code: {}".format(response.status_code))
-    log.dev(response.json())
-
-  if response.status_code == requests.codes.ok:
-    log.success("Successful deposit.")
+  with LogBlock("Server: {}".format(server)):
+    for pastryPath in pastryPaths:
+      pastryPath.safe_mkdir(parents=True)
+      menu = Menu(pastryPath)
+      menu.load()
+      for pastry in menu.registry:
+        uploadPastry(menu, pastry, server)
