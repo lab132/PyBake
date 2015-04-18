@@ -6,7 +6,7 @@ from PyBake import *
 from os.path import expanduser
 from importlib import import_module
 from zipfile import ZipFile
-
+import textwrap
 
 def get_location_path(loc):
   """Return a (resolved) path to the actual location on disk. `loc` must be one of {"local", "system", "user"}."""

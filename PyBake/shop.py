@@ -10,6 +10,8 @@ import json
 from PyBake import Path, Menu, PastryDesc
 from PyBake.logger import log, LogBlock, ScopedLogSink
 from importlib import import_module
+import textwrap
+
 
 
 def processPastryUpload(menu, pastryDesc, pastryFile):

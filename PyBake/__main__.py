@@ -5,7 +5,10 @@ import os
 import argparse
 import textwrap
 from PyBake import Path, version, zipCompressionLookup
-from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock
+from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock#
+import pkgutil
+import re
+from importlib import import_module
 
 # Make sure this module is executed, not imported.
 if __name__ != '__main__':
@@ -24,57 +27,6 @@ description = textwrap.dedent(
   A single dependency is referred to as a crumble.
   """)
 
-ovenDescription = textwrap.dedent(
-  """
-  Tool to create crumbles.
-  """)
-
-basketDescription = textwrap.dedent(
-  """
-  Retrieves pastries from the shop.
-  """)
-
-depotDescription = textwrap.dedent(
-  """
-  Uploads crumbles to the server given a pastry info file.
-  """
-  )
-
-serverDescription = textwrap.dedent(
-  """
-  Sets up a server for crumble management
-  """)
-
-
-def execute_shop(args):
-  """Execute the `shop` command."""
-  log.debug(args)
-  from PyBake import shop
-  return shop.run(**vars(args))
-
-
-def execute_basket(args):
-  """Execute the `basket` command."""
-  log.debug(args)
-  from PyBake import basket
-  return basket.run(**vars(args))
-
-
-def execute_oven(args):
-  """Execute the `oven` command."""
-  log.info("Executing oven")
-  from PyBake import oven
-  args.compression = zipCompressionLookup[args.compression]
-  return oven.run(**vars(args))
-
-
-def execute_depot(args):
-  """Execute the `depot` command."""
-  with LogBlock("Depot"):
-    log.debug(args)
-    from PyBake import depot
-    return depot.run(**vars(args))
-
 
 # Main Parser
 # ===========
@@ -87,77 +39,32 @@ mainParser.add_argument("-v", "--verbose", action="count", default=0,
                         "more v's generates more verbose output (Up to 8). "
                         "Default is {0}".format(int(LogVerbosity.Success)))
 
-# Subparsers
-# ==========
-subparsers = mainParser.add_subparsers(dest="CommandName", title="Commands")
-# Commands are required except when calling -h or -V
-subparsers.required = True
 
-# OvenParser
-# ==========
-ovenParser = subparsers.add_parser("oven", help=ovenDescription, description=ovenDescription)
+def initCommands():
 
-ovenParser.add_argument("recipes_script",
-                        type=Path,
-                        nargs="?",
-                        default=Path("recipes.py"),
-                        help="Path to the recipes script. Default: 'recipes.py'")
-ovenParser.add_argument("-o", "--output", type=Path, default=Path(".pastries/"),
-                        help="The directory to store the pastries in. Defaults to '.pastries/'.")
-ovenParser.add_argument("-d", "--working-dir",
-                        type=Path,
-                        nargs="?",
-                        default=Path.cwd(),
-                        help="The working dir when running the `recipes_script`. Defaults to the current working dir.")
-ovenParser.add_argument("-c", "--compression",
-                        choices=zipCompressionLookup.keys(),
-                        default="deflated",
-                        help="The compression method used to create a pastry.")
-ovenParser.set_defaults(func=execute_oven)
+  # Subparsers
+  # ==========
+  subparsers = mainParser.add_subparsers(dest="CommandName", title="Commands")
+  # Commands are required except when calling -h or -V
+  subparsers.required = True
+  here = Path(__file__).parent / "commands"
+  print(here.as_posix())
+  pyBakeSubmodules = [name for _, name, _ in pkgutil.iter_modules([here.as_posix()]) if re.search(r"__[\w]+__", name) is None]
 
-# DepotParser
-# ===========
+  print(pyBakeSubmodules)
 
-depotParser = subparsers.add_parser("depot", help=depotDescription, description=depotDescription)
+  for module in pyBakeSubmodules:
+    importedModule = import_module("PyBake.commands.{}".format(module))
+    #if hasattr(importedModule, "moduleManager"):
+    #  importedModule.moduleManager.createSubParser(subparsers)
 
-depotParser.add_argument("pastryPaths",
-                         type=Path,
-                         nargs="*",
-                         default=[Path(".pastries")],
-                         metavar="pastry_path",
-                         help="Each pastry_path must either be an existing pastry file or an existing directory that contains pastries.")
+  from PyBake.commands import commands
 
-depotParser.add_argument("-c", "--config",
-                         default="config",
-                         help="Name of the python module containing configuration data. "
-                         "This file must exist in the working directory. (defaults to \"config\").")
-depotParser.set_defaults(func=execute_depot)
-
-# BasketParser
-# ===========
-
-basketParser = subparsers.add_parser("basket", help=basketDescription, description=basketDescription)
-
-basketParser.add_argument("shopping_list",
-                          nargs="?",
-                          default="shoppingList",
-                          help="Sets the used shoppingList (defaults to 'shoppingList') which will be reused"
-                          "to retrieve pastries from the shop.")
-basketParser.add_argument("-l", "--location",
-                          default="user",
-                          choices=["local", "user", "system"],
-                          help="Where to save the pastries to.")
-basketParser.set_defaults(func=execute_basket)
-
-# ServerParser
-# ============
-
-shopParser = subparsers.add_parser("shop", help=serverDescription, description=serverDescription)
-
-shopParser.add_argument("-c", "--config", default="shop_config",
-                        help="Supply a custom config for the shop (defaults to shop_config")
-shopParser.set_defaults(func=execute_shop)
-
+  for commandName, commandClass in commands.items():
+    print("Processing command: {}".format(commandName))
+    commandObject = commandClass()
+    subParser = subparsers.add_parser(commandName, help=commandObject.longDescription, description=commandObject.longDescription)
+    commandObject.createArguments(subParser)
 
 # Main
 # ====
@@ -166,6 +73,8 @@ shopParser.set_defaults(func=execute_shop)
 def main():
   """Main function of this script. Mainly serves as a scope."""
   log.addLogSink(StdOutSink())
+
+  initCommands()
 
   args = mainParser.parse_args()
 
