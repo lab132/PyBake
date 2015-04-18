@@ -3,7 +3,7 @@
 
 from PyBake.commands import command
 import textwrap
-from PyBake import Path
+from PyBake import Path, log, LogBlock
 from PyBake.depot import run
 
 @command("depot")
