@@ -8,39 +8,6 @@ from importlib import import_module
 from zipfile import ZipFile
 import textwrap
 
-class BasketModuleManager:
-  """Module Manager for Basket"""
-
-  longDescription = textwrap.dedent(
-  """
-  Retrieves pastries from the shop.
-  """)
-
-  def createSubParser(self, subparsers):
-    basketParser = subparsers.add_parser("basket", help=self.longDescription, description=self.longDescription)
-
-    basketParser.add_argument("shopping_list",
-                              nargs="?",
-                              default="shoppingList",
-                              help="Sets the used shoppingList (defaults to 'shoppingList') which will be reused"
-                              "to retrieve pastries from the shop.")
-    basketParser.add_argument("-l", "--location",
-                              default="user",
-                              choices=["local", "user", "system"],
-                              help="Where to save the pastries to.")
-    basketParser.set_defaults(func=execute_basket)
-
-moduleManager = BasketModuleManager()
-
-def execute_basket(args):
-  """Execute the `basket` command."""
-  log.debug(args)
-  from PyBake import basket
-  return basket.run(**vars(args))
-
-
-
-
 def get_location_path(loc):
   """Return a (resolved) path to the actual location on disk. `loc` must be one of {"local", "system", "user"}."""
   if loc == "system":
