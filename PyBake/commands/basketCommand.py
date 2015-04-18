@@ -20,10 +20,6 @@ class BasketModuleManager:
                               default="shoppingList",
                               help="Sets the used shoppingList (defaults to 'shoppingList') which will be reused"
                               "to retrieve pastries from the shop.")
-    basketParser.add_argument("-l", "--location",
-                              default="user",
-                              choices=["local", "user", "system"],
-                              help="Where to save the pastries to.")
     basketParser.set_defaults(func=execute_basket)
 
 def execute_basket(args):

@@ -7,11 +7,10 @@ from flask import Flask, request, session, g, redirect, url_for, abort, \
 
 import json
 
-from PyBake import Path, Menu, PastryDesc
+from PyBake import Path, Menu, PastryDesc, try_getattr, defaultPastriesDir
 from PyBake.logger import log, LogBlock, ScopedLogSink
 from importlib import import_module
 import textwrap
-
 
 
 def processPastryUpload(menu, pastryDesc, pastryFile):
@@ -21,6 +20,7 @@ def processPastryUpload(menu, pastryDesc, pastryFile):
       return
     # Get the target path on the local system for the pastry.
     pastryPath = menu.makePath(pastryDesc)
+    log.info("Saving pastry to: {}".format(pastryPath.as_posix()))
     # Try saving the pastry.
     pastryFile.save(pastryPath.as_posix())
     # Add that pastry to the menu.
@@ -36,13 +36,9 @@ def getPastryFilePath(menu, pastryDesc):
     log.error("Pastry not found.")
 
 
-def Shop(name=__name__):
+def Shop(*, menu, name=__name__):
   """Create the Fask application."""
   with LogBlock("Creating Shop Instance"):
-    menu = Menu()
-    log.info("Full menu file path: {}".format(menu.filePath.as_posix()))
-    menu.load()
-
     # create our little application :)
     app = Flask(name)
 
@@ -141,8 +137,19 @@ def Shop(name=__name__):
 def run(*, config, **kwargs):
   """Open the shop!"""
   with LogBlock("Shop"):
-    app = Shop()
-
     shop_config = import_module(config)
 
-    app.run(debug=True, host=shop_config.server.host, port=shop_config.server.port)
+    pastriesRoot = try_getattr(shop_config,
+                               ("pastriesRoot", "pastriesDir", "pastriesPath"),
+                               default_value=defaultPastriesDir)
+    pastriesRoot = Path(pastriesRoot)
+    pastriesRoot.safe_mkdir(parents=True)
+
+    debug = try_getattr(shop_config, ("debug", "debugEnabled"), default_value=False)
+
+    menu = Menu(pastriesRoot)
+    log.info("Full menu file path: {}".format(menu.filePath.as_posix()))
+    menu.load()
+    app = Shop(menu=menu)
+    app.run(debug=debug, host=shop_config.server.host, port=shop_config.server.port)
+    menu.save()

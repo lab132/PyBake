@@ -148,16 +148,28 @@ log = LogBackend()
 class StdOutSink:
   """Standard log sink that prints to `stdout`."""
 
+  prefixes = ["All",
+              "Err",
+              "Srs",
+              "Wrn",
+              "Scs",
+              "Ifo",
+              "Dev",
+              "Dbg"]
+
   def logMessage(self, *, verbosity, message, blockLevel):
     """Handle the logging event."""
     output = sys.stdout
     if verbosity <= LogVerbosity.Warning:
       output = sys.stderr
-    output.write("{0}{1}\n".format("  " * blockLevel, message))
+    prefix = StdOutSink.prefixes[verbosity]
+    indent = "  " * blockLevel
+    message = str(message).replace("\n", "\n   | {}".format(indent))
+    output.write("{}| {}{}\n".format(prefix, indent, message))
 
   def logBlock(self, *, block, isOpening):
     """Handle the log block event."""
-    sys.stdout.write("{0}{1} {2}\n".format("  " * block.level, "+++" if isOpening else "---", block.name))
+    sys.stdout.write("{1}| {0}{1} {2}\n".format("  " * block.level, "+++" if isOpening else "---", block.name))
 
 
 class ScopedLogSink:
@@ -190,7 +202,8 @@ class ScopedLogSink:
 
   def logMessage(self, *, verbosity, message, blockLevel):
     """Handle the logging event."""
-    if verbosity >= LogLevel.Warning:
+    if verbosity <= LogLevel.Warning:
+      print("appending: ", message)
       self.logged["error"].append(message)
 
   def logBlock(self, *, block, isOpening):

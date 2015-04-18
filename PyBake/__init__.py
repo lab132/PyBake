@@ -12,6 +12,8 @@ import os
 import re
 import json
 import zipfile
+from appdirs import AppDirs
+
 
 if __name__ == "__main__":
   raise RuntimeError("__init__.py is not supposed to be executed!")
@@ -33,6 +35,24 @@ def updateVersionFromFile():
         version[key] = int(versionMatch.group(key))
 
 updateVersionFromFile()
+
+
+Path = pathlib.Path
+
+
+def safe_mkdir(self, **kwargs):
+  """Like `Path.mkdir`, except it is allowed to call this on an existing path."""
+  if not self.exists():
+    self.mkdir(**kwargs)
+setattr(Path, "safe_mkdir", safe_mkdir)
+
+
+dataDir = Path(AppDirs("PyBake", appauthor="Lab132", version="v{Major}.{Minor}.{Patch}".format(**version)).user_data_dir)
+dataDir.safe_mkdir(parents=True)
+dataDir = dataDir.resolve()
+
+defaultPastriesDir = dataDir / "pastries"
+defaultPastriesDir.safe_mkdir(parents=True)
 
 
 def try_getattr(obj, choices, default_value=None, raise_error=False):
@@ -147,7 +167,7 @@ class ServerConfig:
       if match is None:
         log.error("Could not match given string as an url")
         return None
-      log.info(match)
+      log.debug(match)
       matchDict = match.groupdict()
       port = matchDict.get("port", None)
       protocol = matchDict.get("protocol", "default")
@@ -157,7 +177,7 @@ class ServerConfig:
         log.info("No port given in url, using default from protocol.")
         port = ServerConfig.port_lookup[protocol]
 
-      log.info("Port is {}".format(port))
+      log.dev("Port is {}".format(port))
       self.host = matchDict["address"]
       self.port = port
       self.protocol = protocol
@@ -228,16 +248,6 @@ class PastryJSONEncoder(json.JSONEncoder):
     if isinstance(obj, Path):
       return obj.as_posix()
     return json.JSONEncoder.default(self, obj)
-
-
-Path = pathlib.Path
-
-
-def safe_mkdir(self, **kwargs):
-  """Like `Path.mkdir`, except it is allowed to call this on an existing path."""
-  if not self.exists():
-    self.mkdir(**kwargs)
-setattr(Path, "safe_mkdir", safe_mkdir)
 
 
 class ChangeDir:

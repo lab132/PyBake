@@ -18,16 +18,19 @@ class DepotModuleManager:
 
   def createArguments(self, depotParser):
     """Create the subparser and arguments for the depot command"""
-    depotParser.add_argument("pastry_path",
+    depotParser.add_argument("pastryPaths",
                              type=Path,
-                             nargs="?",
-                             default=Path("pastry.zip"),
-                             help="Path to the pastry file (defaults to \"./pastry.zip\").")
-
+                             nargs="+",
+                             default=Path(".pastries"),
+                             help="Path to the pastry directory. Must contain a valid 'menu.json' that describes "
+                                  "the available packages. "
+                                  "Default: .pastries")
     depotParser.add_argument("-c", "--config",
-                             default="config",
+                             default=Path("config.py"),
+                             dest="configPath",
+                             type=Path,
                              help="Name of the python module containing configuration data. "
-                             "This file must exist in the working directory. (defaults to \"config\").")
+                                  "Default: config.py.")
     depotParser.set_defaults(func=execute_depot)
 
 def execute_depot(args):

@@ -47,13 +47,24 @@ def uploadPastry(menu, pastry, server):
       log.error("Failed to upload pastry.")
 
 
-def run(*, pastryPaths, config, **kwargs):
+def importConfigScript(configPath):
+  with ChangeDir(configPath.parent):
+    if configPath.suffix == ".py":
+      config = configPath.parent / configPath.stem
+    return import_module(config.name)
+
+
+
+def run(*, pastryPaths, configPath, **kwargs):
   """Deposit a pastry in a shop."""
 
+  # Make sure the config file exists.
+  configPath = configPath.resolve()
+
   # Import the config script.
-  log.debug("Importing config script '{}.py'".format(config))
-  config = import_module(config)
-  server = config.server
+  log.debug("Importing config script: {}".format(configPath.as_posix()))
+  config = importConfigScript(configPath)
+  server = try_getattr(config, ("server", "serverConfig"), raise_error=True)
 
   with LogBlock("Server: {}".format(server)):
     for pastryPath in pastryPaths:

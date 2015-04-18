@@ -48,10 +48,10 @@ def initCommands():
   # Commands are required except when calling -h or -V
   subparsers.required = True
   here = Path(__file__).parent / "commands"
-  print(here.as_posix())
+  log.debug("Commands dir path: {}".format(here.as_posix()))
   pyBakeSubmodules = [name for _, name, _ in pkgutil.iter_modules([here.as_posix()]) if re.search(r"__[\w]+__", name) is None]
 
-  print(pyBakeSubmodules)
+  log.debug("All modules in command dir: {}".format(pyBakeSubmodules))
 
   for module in pyBakeSubmodules:
     importedModule = import_module("PyBake.commands.{}".format(module))
@@ -61,7 +61,7 @@ def initCommands():
   from PyBake.commands import commands
 
   for commandName, commandClass in commands.items():
-    print("Processing command: {}".format(commandName))
+    log.debug("Processing command: {}".format(commandName))
     commandObject = commandClass()
     subParser = subparsers.add_parser(commandName, help=commandObject.longDescription, description=commandObject.longDescription)
     commandObject.createArguments(subParser)

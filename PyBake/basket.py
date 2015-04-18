@@ -2,19 +2,10 @@
 The place to get your daily pastries!
 """
 
-from PyBake import *
-from os.path import expanduser
 from importlib import import_module
 from zipfile import ZipFile
-import textwrap
 
-def get_location_path(loc):
-  """Return a (resolved) path to the actual location on disk. `loc` must be one of {"local", "system", "user"}."""
-  if loc == "system":
-    assert False, "Not supported yet."
-  lookup = {"local": Path.cwd(), "user": Path(expanduser("~"))}
-
-  return lookup[loc]
+from PyBake import PastryDesc, log, LogBlock, Path, try_getattr, Menu, defaultPastriesDir, byteSuffixLookup
 
 
 def downloadPastries(menu, pastries, server):
@@ -59,12 +50,11 @@ def installPastries(menu, pastries):
     pastryDestination = Path(pastryDestination)
     pastryDestination.safe_mkdir(parents=True)
     pastryPath = menu.makePath(pastry)
-    with LogBlock("Installing Pastry"):
-      log.info("{} => {}".format(pastryPath, pastryDestination))
-      with ZipFile(pastryPath.as_posix()) as pastryFile:
-        blackList = ("pastry.json", "ingredients.json")
-        filteredFiles = [f for f in pastryFile.namelist() if f not in blackList]
-        pastryFile.extractall(pastryDestination.as_posix(), members=filteredFiles)
+    log.info("{} => {}".format(pastryPath, pastryDestination))
+    with ZipFile(pastryPath.as_posix()) as pastryFile:
+      blackList = ("pastry.json", "ingredients.json")
+      filteredFiles = [f for f in pastryFile.namelist() if f not in blackList]
+      pastryFile.extractall(pastryDestination.as_posix(), members=filteredFiles)
 
 
 class ByteProgressListener:
@@ -118,17 +108,25 @@ class ByteProgressListener:
       self.logInterface.set_progress(int(self.currentSize))
 
 
-def run(*, location, shopping_list="shoppingList", **kwargs):
+def run(*, shopping_list="shoppingList", **kwargs):
   """Gets pastries from the shop using the shopping list"""
   with LogBlock("Basket"):
     shopping_list = import_module(shopping_list)
     server = try_getattr(shopping_list, ("server_config", "server"), raise_error=True)
-    pastries = try_getattr(shopping_list, ("pastries", "pastry"), raise_error=True)
+    allPastries = try_getattr(shopping_list, ("pastries", "pastry"), raise_error=True)
+    cleanInstall = bool(try_getattr(shopping_list, ("cleanInstall", "clean"), default_value=False))
+    pastriesRoot = Path(try_getattr(shopping_list, ("pastriesRoot", "pastriesDir", "pastriesPath"), default_value=defaultPastriesDir))
+    pastriesRoot.safe_mkdir(parents=True)
 
-    pastries_root = get_location_path(location) / Menu.defaultPastriesDirPath
-    pastries_root.safe_mkdir(parents=True)
-    menu = Menu(pastries_root)
+    menu = Menu(pastriesRoot)
+    log.debug("Menu file path: {}".format(menu.filePath.as_posix()))
+
     menu.load()
-    newPastries = downloadPastries(menu, pastries, server)
+
+    with LogBlock("Downloading Pastries"):
+      newPastries = downloadPastries(menu, allPastries, server)
+
     menu.save()
-    installPastries(menu, pastries)
+
+    with LogBlock("Installing Pastries"):
+      installPastries(menu, newPastries if not cleanInstall else allPastries)
