@@ -4,7 +4,7 @@
 from PyBake.commands import command
 import textwrap
 from PyBake import Path
-from PyBake.depot import execute_depot
+from PyBake.depot import run
 
 @command("depot")
 class DepotModuleManager:
@@ -29,3 +29,9 @@ class DepotModuleManager:
                              help="Name of the python module containing configuration data. "
                              "This file must exist in the working directory. (defaults to \"config\").")
     depotParser.set_defaults(func=execute_depot)
+
+def execute_depot(args):
+  """Execute the `depot` command."""
+  with LogBlock("Depot"):
+    log.debug(args)
+    return run(**vars(args))

@@ -5,7 +5,10 @@ import os
 import argparse
 import textwrap
 from PyBake import Path, version, zipCompressionLookup
-from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock
+from PyBake.logger import StdOutSink, LogVerbosity, log, LogBlock#
+import pkgutil
+import re
+from importlib import import_module
 
 # Make sure this module is executed, not imported.
 if __name__ != '__main__':
@@ -44,8 +47,9 @@ def initCommands():
   subparsers = mainParser.add_subparsers(dest="CommandName", title="Commands")
   # Commands are required except when calling -h or -V
   subparsers.required = True
-
-  pyBakeSubmodules = [name for _, name, _ in pkgutil.iter_modules(['PyBake/commands']) if re.search("__[\w]+__",name) is None]
+  here = Path(__file__).parent / "commands"
+  print(here.as_posix())
+  pyBakeSubmodules = [name for _, name, _ in pkgutil.iter_modules([here.as_posix()]) if re.search(r"__[\w]+__", name) is None]
 
   print(pyBakeSubmodules)
 

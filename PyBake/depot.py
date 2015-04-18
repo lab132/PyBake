@@ -9,31 +9,6 @@ import textwrap
 import zipfile
 import requests
 
-class DepotModuleManager:
-  """Module Manager for Depot"""
-
-  longDescription = textwrap.dedent(
-  """
-  Uploads crumbles to the server given a pastry info file.
-  """
-  )
-
-  def createSubParser(self, subParsers):
-    """Create the subparser and arguments for the depot command"""
-
-    depotParser = subParsers.add_parser("depot", help=self.longDescription, description=self.longDescription)
-
-    depotParser.add_argument("pastry_path",
-                             type=Path,
-                             nargs="?",
-                             default=Path("pastry.zip"),
-                             help="Path to the pastry file (defaults to \"./pastry.zip\").")
-
-    depotParser.add_argument("-c", "--config",
-                             default="config",
-                             help="Name of the python module containing configuration data. "
-                             "This file must exist in the working directory. (defaults to \"config\").")
-    depotParser.set_defaults(func=execute_depot)
 
 
 # Note: This function could run concurrently.
