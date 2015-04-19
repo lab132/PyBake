@@ -10,8 +10,8 @@ class MenuTests(TestCase):
 
   def test_AddRemove(self):
     m = Menu()
-    p1 = PastryDesc(name="foo", version="v0.1.0")
-    p2 = PastryDesc(name="bar", version="v1.33.7")
+    p1 = Pastry(name="foo", version="v0.1.0")
+    p2 = Pastry(name="bar", version="v1.33.7")
     self.assertFalse(m.exists(p1))
     self.assertFalse(m.exists(p2))
     m.add(p1)
@@ -27,7 +27,7 @@ class MenuTests(TestCase):
 
   def test_LoadSave(self):
     m = Menu("MenuTests/test_LoadSave.json")
-    p1 = PastryDesc(name="foo", version="v0.1.0")
+    p1 = Pastry(name="foo", version="v0.1.0")
     m.add(p1)
     m.save()
     m.clear()

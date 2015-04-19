@@ -253,7 +253,7 @@ class PastryJSONEncoder(json.JSONEncoder):
 
   def default(self, obj):
     """Called in the process of serializing python data structures to JSON."""
-    if isinstance(obj, Platform) or isinstance(obj, PastryDesc):
+    if isinstance(obj, Platform) or isinstance(obj, Pastry):
       return dict(obj)
     if isinstance(obj, Path):
       return obj.as_posix()
@@ -293,7 +293,7 @@ class ChangeDir:
     os.chdir(self.previous.as_posix())
 
 
-class PastryDesc:
+class Pastry:
   """
   Describes a pastry (a package).
   """
@@ -342,27 +342,7 @@ class PastryDesc:
     return "{} {}".format(self.name, self.version)
 
   def __repr__(self):
-    return "PastryDesc(name='{}', version='{}')".format(self.name, self.version)
-
-
-class Pastry(PastryDesc):
-  """Describes a pastry and its ingredients."""
-  def __init__(self, *, name, version, dependencies=None, ingredients=None):
-    super().__init__(name=name, version=version)
-    self.dependencies = dependencies or []
-    self.ingredients = ingredients or []
-
-  def __iter__(self):
-    yield ("name", self.name)
-    yield ("version", self.version)
-    yield ("dependencies", self.dependencies)
-    yield ("ingredients", self.ingredients)
-
-  def __repr__(self):
-    return "Pastry(name='{}', version='{}', dependencies='{}', ingredients='{}')".format(self.name,
-                                                                                 self.version,
-                                                                                 self.dependencies,
-                                                                                 self.ingredients)
+    return "Pastry(name='{}', version='{}')".format(self.name, self.version)
 
 
 class ShoppingList:
@@ -399,7 +379,7 @@ class Menu:
   """
   Lookup table for existing pastries.
 
-  Keys: A `PastryDesc` instance..
+  Keys: A `Pastry` instance..
   Values: A `Path` instance.
 
   Takes care of saving and loading it to/from file using the `open()` and `close()` methods.
@@ -463,7 +443,7 @@ class Menu:
     numNewEntries = 0
     # Using self.add will prevent adding duplicates.
     for entry in loadedRegistry:
-      self.add(PastryDesc(entry))
+      self.add(Pastry(entry))
       numNewEntries += 1
     return numNewEntries
 
@@ -489,8 +469,8 @@ class Menu:
 
     If the pastry already exists, it is ignored and `False` is returned.
     """
-    assert hasattr(pastryDesc, "name"), "Need a PastryDesc compatible instance!"
-    assert hasattr(pastryDesc, "version"), "Need a PastryDesc compatible instance!"
+    assert hasattr(pastryDesc, "name"), "Need a Pastry compatible instance!"
+    assert hasattr(pastryDesc, "version"), "Need a Pastry compatible instance!"
     if not self.exists(pastryDesc):
       self.registry.append(pastryDesc)
       return True
@@ -527,7 +507,7 @@ class Menu:
     :return: The final path for the pastry.
     :example:
     >>> menu = Menu()
-    >>> = menu.makePath(PastryDesc(name="foo", version="v0.1.0"))
+    >>> = menu.makePath(Pastry(name="foo", version="v0.1.0"))
     "<current_working_dir>/.pastries/foo_v0_1_0.zip"
     """
     assert pastryDesc is not None

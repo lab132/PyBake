@@ -7,7 +7,7 @@ from flask import Flask, request, session, g, redirect, url_for, abort, \
 
 import json
 
-from PyBake import Path, Menu, PastryDesc, try_getattr, defaultPastriesDir
+from PyBake import Path, Menu, Pastry, try_getattr, defaultPastriesDir
 from PyBake.logger import log, LogBlock, ScopedLogSink
 from importlib import import_module
 import textwrap
@@ -84,7 +84,7 @@ def Shop(*, menu, name=__name__):
           name = data["name"][0]
           version = data["version"][0]
           with ScopedLogSink() as sink:
-            processPastryUpload(menu, PastryDesc(name=name, version=version), files["pastry"][0])
+            processPastryUpload(menu, Pastry(name=name, version=version), files["pastry"][0])
             errors.extend(sink.logged["error"])
 
         if errors and len(errors) != 0:
@@ -117,7 +117,7 @@ def Shop(*, menu, name=__name__):
         pastry_path = None
         if len(errors) == 0:
           # `data` is a multi-dict, which is why we need to extract it here.
-          pastryDesc = PastryDesc(name=data["name"][0],
+          pastryDesc = Pastry(name=data["name"][0],
                                   version=data["version"][0])
           with ScopedLogSink() as sink:
             pastry_path = getPastryFilePath(menu, pastryDesc)

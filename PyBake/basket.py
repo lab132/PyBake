@@ -12,7 +12,7 @@ from PyBake import dataDir, defaultPastriesDir, byteSuffixLookup
 # Functions.
 from PyBake import try_getattr, importFromFile
 # Classes.
-from PyBake import PastryDesc, Path, Menu, PastryJSONEncoder
+from PyBake import Pastry, Path, Menu, PastryJSONEncoder
 # Logging.
 from PyBake.logger import log, LogBlock
 
@@ -20,7 +20,7 @@ def downloadPastries(menu, pastries, server, *, forceDownload=False):
   import requests
   newPastries = []
   for pastryData in pastries:
-    pastry = PastryDesc(pastryData)
+    pastry = Pastry(pastryData)
     pastryExists = menu.exists(pastry)
     if forceDownload and pastryExists:
       log.info("Forcing re-download of already existing pastry: {}".format(pastry))
@@ -56,7 +56,7 @@ def downloadPastries(menu, pastries, server, *, forceDownload=False):
 
 def installPastries(menu, receipt, pastries, *, forceInstall=False):
   for pastryData in pastries:
-    pastry = PastryDesc(pastryData)
+    pastry = Pastry(pastryData)
     isInstalled = receipt.exists(pastry)
     if isInstalled and forceInstall:
       if not forceInstall:
@@ -210,7 +210,7 @@ def run(*, shoppingList="shoppingList.py", forceInstall=False, forceDownload=Fal
     receipt.load()
     with LogBlock("Installing Pastries"):
       if len(newPastries) == 0:
-        log.info("No pastries to install.")
+        log.info("No pastries to install: All up to date.")
       else:
         installPastries(menu, receipt, newPastries, forceInstall=forceInstall)
     receipt.save()

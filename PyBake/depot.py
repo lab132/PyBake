@@ -25,7 +25,7 @@ def uploadPastry(menu, pastry, server):
       #       of ZipFile.open, so we use ZipFile.read instead to load
       #       the entire file as bytes, convert it to a string, and parse that.
       pastryBytes = zip_file.read("pastry.json")
-      zippedPastry = PastryDesc(data=json.loads(pastryBytes.decode("UTF-8")))
+      zippedPastry = Pastry(data=json.loads(pastryBytes.decode("UTF-8")))
 
   if zippedPastry != pastry:
     log.error("")

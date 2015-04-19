@@ -55,7 +55,7 @@ def zipBaker(*, menu, pot, options):
   """Processes ingredients in a pot and creates pastries from that."""
   with LogBlock("Baking Pastries (Zip)"):
     for key, ingredients in pot.ingredients.items():
-      pastry = PastryDesc(name=key[0], version=key[1])
+      pastry = Pastry(name=key[0], version=key[1])
       if menu.add(pastry) is False:
         continue
       with LogBlock("Pastry: {} with {} ingredients".format(pastry, len(ingredients))):
