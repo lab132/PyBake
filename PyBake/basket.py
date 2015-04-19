@@ -4,17 +4,28 @@ The place to get your daily pastries!
 
 from importlib import import_module
 from zipfile import ZipFile
+import json
+from hashlib import sha1
 
-from PyBake import PastryDesc, log, LogBlock, Path, try_getattr, Menu, defaultPastriesDir, byteSuffixLookup
+# Variables.
+from PyBake import dataDir, defaultPastriesDir, byteSuffixLookup
+# Functions.
+from PyBake import try_getattr, importFromFile
+# Classes.
+from PyBake import PastryDesc, Path, Menu, PastryJSONEncoder
+# Logging.
+from PyBake.logger import log, LogBlock
 
-
-def downloadPastries(menu, pastries, server):
+def downloadPastries(menu, pastries, server, *, forceDownload=False):
   import requests
   newPastries = []
   for pastryData in pastries:
     pastry = PastryDesc(pastryData)
-    if menu.exists(pastry):
-      log.dev("Pastry already exists locally: {}".format(pastry))
+    pastryExists = menu.exists(pastry)
+    if forceDownload and pastryExists:
+      log.info("Forcing re-download of already existing pastry: {}".format(pastry))
+    if not forceDownload and pastryExists:
+      log.dev("Skipping locally existing pastry: {}".format(pastry))
       continue
     with LogBlock("Requesting {}".format(pastry)):
       response = requests.post("{}/get_pastry".format(server),
@@ -43,9 +54,17 @@ def downloadPastries(menu, pastries, server):
   return newPastries
 
 
-def installPastries(menu, pastries):
+def installPastries(menu, receipt, pastries, *, forceInstall=False):
   for pastryData in pastries:
     pastry = PastryDesc(pastryData)
+    isInstalled = receipt.exists(pastry)
+    if isInstalled and forceInstall:
+      if not forceInstall:
+        log.info("Pastry already installed: {}".format(pastry))
+        continue
+      log.info("Re-installing pastry: {}".format(pastry))
+    else:
+      log.info("Installing pastry: {}".format(pastry))
     pastryDestination = pastryData.get("destination", pastryData.get("dest", None))
     pastryDestination = Path(pastryDestination)
     pastryDestination.safe_mkdir(parents=True)
@@ -55,6 +74,7 @@ def installPastries(menu, pastries):
       blackList = ("pastry.json", "ingredients.json")
       filteredFiles = [f for f in pastryFile.namelist() if f not in blackList]
       pastryFile.extractall(pastryDestination.as_posix(), members=filteredFiles)
+    receipt.add(pastry)
 
 
 class ByteProgressListener:
@@ -108,25 +128,89 @@ class ByteProgressListener:
       self.logInterface.set_progress(int(self.currentSize))
 
 
-def run(*, shopping_list="shoppingList", **kwargs):
+# The directory in which all receipts are stored by default.
+defaultReceiptsDirPath = dataDir / "receipts"
+defaultReceiptsDirPath.safe_mkdir(parents=True)
+
+# The receipts database file.
+defaultReceiptsDBPath = dataDir / "receipts.json"
+if not defaultReceiptsDBPath.exists():
+  with defaultReceiptsDBPath.open("w") as receiptsFile:
+    json.dump({}, receiptsFile)
+
+
+def getReceipt(shoppingListPath):
+  """
+  Creates a receipt from the shopping list path.
+  """
+  shoppingListPath = Path(shoppingListPath).resolve()
+  log.debug("Getting receipt for shopping list: {}".format(shoppingListPath.as_posix()))
+  projectPath = shoppingListPath.parent
+  log.debug("Key for receipt: {}".format(projectPath.as_posix()))
+
+  with defaultReceiptsDBPath.open("r") as receiptsDBFile:
+    receiptsDB = json.load(receiptsDBFile)
+
+  receipt = Receipt(key=projectPath.as_posix())
+  log.debug("Using {}".format(repr(receipt)))
+
+  # In case the receipt is new, we create it, add it to the database, and return.
+  if receipt.key not in receiptsDB:
+    log.debug("Adding nonexistant receipt.")
+    receiptsDB[receipt.key] = receipt.hash
+    log.debug("Saving receipts database.")
+    with defaultReceiptsDBPath.open("w") as receiptsDBFile:
+      json.dump(receiptsDB, receiptsDBFile, sort_keys=True, indent=2)
+    return receipt
+
+  # At this point, the receipt already exists.
+  assert receipt.hash == receiptsDB[receipt.key], "Different hashes?!"
+  return receipt
+
+
+class Receipt(Menu):
+  """
+  Stores information about which pastries are installed.
+
+  This is specific to each project.
+  """
+
+  def __init__(self, *, key, dirPath=None):
+    self.key = key
+    self.hash = sha1(str(self.key).encode("UTF-8")).hexdigest()
+    filePath = Path(dirPath or defaultReceiptsDirPath) / "{}.json".format(self.hash)
+    super().__init__(filePath)
+
+  def __str__(self):
+    return "{} => {}".format(self.key, self.filePath.as_posix())
+
+  def __repr__(self):
+    return "Receipt(key={}, hash={}, filePath={})".format(repr(self.key), repr(self.hash), repr(self.filePath))
+
+
+def run(*, shoppingList="shoppingList.py", forceInstall=False, forceDownload=False, **kwargs):
   """Gets pastries from the shop using the shopping list"""
   with LogBlock("Basket"):
-    shopping_list = import_module(shopping_list)
-    server = try_getattr(shopping_list, ("server_config", "server"), raise_error=True)
-    allPastries = try_getattr(shopping_list, ("pastries", "pastry"), raise_error=True)
-    cleanInstall = bool(try_getattr(shopping_list, ("cleanInstall", "clean"), default_value=False))
-    pastriesRoot = Path(try_getattr(shopping_list, ("pastriesRoot", "pastriesDir", "pastriesPath"), default_value=defaultPastriesDir))
+    shoppingListPath = shoppingList.resolve()
+    shoppingList = importFromFile(shoppingListPath)
+    server = try_getattr(shoppingList, ("server_config", "server"), raise_error=True)
+    allPastries = try_getattr(shoppingList, ("pastries", "pastry"), raise_error=True)
+    pastriesRoot = Path(try_getattr(shoppingList, ("pastriesRoot", "pastriesDir", "pastriesPath"), default_value=defaultPastriesDir))
     pastriesRoot.safe_mkdir(parents=True)
 
     menu = Menu(pastriesRoot)
     log.debug("Menu file path: {}".format(menu.filePath.as_posix()))
-
     menu.load()
-
     with LogBlock("Downloading Pastries"):
-      newPastries = downloadPastries(menu, allPastries, server)
-
+      newPastries = downloadPastries(menu, allPastries, server, forceDownload=forceDownload)
     menu.save()
 
+    receipt = getReceipt(shoppingListPath)
+    log.debug("Receipt file path: {}".format(receipt.filePath.as_posix()))
+    receipt.load()
     with LogBlock("Installing Pastries"):
-      installPastries(menu, newPastries if not cleanInstall else allPastries)
+      if len(newPastries) == 0:
+        log.info("No pastries to install.")
+      else:
+        installPastries(menu, receipt, newPastries, forceInstall=forceInstall)
+    receipt.save()

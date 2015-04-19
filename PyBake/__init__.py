@@ -82,6 +82,16 @@ def createFilename(*args, fileExtension=None):
   return fileName
 
 
+def importFromFile(filePath):
+  import sys
+  from importlib import import_module
+  filePath = Path(filePath).resolve()
+  sys.path.insert(0, filePath.parent.as_posix())
+  fileName = filePath.stem if filePath.suffix == ".py" else filePath.name
+  module = import_module(fileName)
+  del sys.path[0]
+  return module
+
 zipCompressionLookup = {
   "stored": zipfile.ZIP_STORED,
   "deflated": zipfile.ZIP_DEFLATED,
