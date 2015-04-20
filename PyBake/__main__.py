@@ -31,8 +31,8 @@ description = textwrap.dedent(
 # Main Parser
 # ===========
 mainParser = argparse.ArgumentParser(prog="PyBake", description=description)
-mainParser.add_argument("-V", "--Version", action="version",
-                        version="%(prog)s v{Major}.{Minor}.{Patch}".format(**version))
+mainParser.add_argument("-V", "--Version", "--version", action="version",
+                        version="%(prog)s {Major}.{Minor}.{Patch}".format(**version))
 mainParser.add_argument("-q", "--quiet", default=False, action="store_true")
 mainParser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Set the verbosity of the output, "

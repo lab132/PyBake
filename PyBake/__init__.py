@@ -13,6 +13,7 @@ import re
 import json
 import zipfile
 from appdirs import AppDirs
+import semantic_version
 
 
 if __name__ == "__main__":
@@ -55,12 +56,13 @@ defaultPastriesDir = dataDir / "pastries"
 defaultPastriesDir.safe_mkdir(parents=True)
 
 
+
+
 def Version(version):
   """
   Tries to create a `semantic_version.Version` object from param `version`.
   :param version: If it is a string, it must still be compliant with the semantic versioning scheme (http://semver.org/)
   """
-  import semantic_version
   return version if isinstance(version, semantic_version.Version) else semantic_version.Version(version)
 
 
@@ -72,8 +74,11 @@ def VersionSpec(spec):
   VersionSpec(">0.1.0")
   VersionSpec(">0.1.0,<0.3.0,!=0.2.1-rc1")
   """
-  import semantic_version
-  return spec if isinstance(spec, semantic_version.Spec) else semantic_version.Spec(spec)
+  if isinstance(spec, semantic_version.Version):
+    return semantic_version.Spec("=={}".format(spec))
+  if isinstance(spec, semantic_version.Spec):
+    return spec
+  return semantic_version.Spec(spec)
 
 
 def try_getattr(obj, choices, default_value=None, raise_error=False):
@@ -323,20 +328,20 @@ class Pastry:
     """
     Instantiate a pastry description from either a data dict, or a name and version.
     :param data: A dict that contains a "name" and "version" key.
-    :param name: The
-    :param version:
-    :return: A pastry desc instance.
+    :param name: The name of the pastry (str).
+    :param version: The version of the pastry. Must be compliant with the semantic version scheme (http://semver.org/).
+    :return: A pastry desc instance.1
 
     :example:
-    data1 = {"name": "foo", "version": "v0.1.0"}
+    data1 = {"name": "foo", "version": "1.2.3"}
     p1 = Pastry(data1)
-    p2 = Pastry(name="foo", version="v0.1.0")
+    p2 = Pastry(name="foo", version="1.0.0-rc1")
     """
     if data:
       name = data["name"]
       version = data["version"]
-    self.name = name
-    self.version = version
+    self.name = str(name)
+    self.version = Version(version)
 
   @property
   def path(self):
@@ -357,7 +362,7 @@ class Pastry:
     d = dict(p)
     """
     yield ("name", self.name)
-    yield ("version", self.version)
+    yield ("version", str(self.version))
 
   def __str__(self):
     return "{} {}".format(self.name, self.version)
