@@ -47,12 +47,33 @@ def safe_mkdir(self, **kwargs):
 setattr(Path, "safe_mkdir", safe_mkdir)
 
 
-dataDir = Path(AppDirs("PyBake", appauthor="Lab132", version="v{Major}.{Minor}.{Patch}".format(**version)).user_data_dir)
+dataDir = Path(AppDirs("PyBake", appauthor="Lab132", version="{Major}.{Minor}.{Patch}".format(**version)).user_data_dir)
 dataDir.safe_mkdir(parents=True)
 dataDir = dataDir.resolve()
 
 defaultPastriesDir = dataDir / "pastries"
 defaultPastriesDir.safe_mkdir(parents=True)
+
+
+def Version(version):
+  """
+  Tries to create a `semantic_version.Version` object from param `version`.
+  :param version: If it is a string, it must still be compliant with the semantic versioning scheme (http://semver.org/)
+  """
+  import semantic_version
+  return version if isinstance(version, semantic_version.Version) else semantic_version.Version(version)
+
+
+def VersionSpec(spec):
+  """
+  Tries to create a `semantic_version.Spec` object from param `spec`.
+  :param spec: Must be a compliant semantic version with a prece.
+  :example:
+  VersionSpec(">0.1.0")
+  VersionSpec(">0.1.0,<0.3.0,!=0.2.1-rc1")
+  """
+  import semantic_version
+  return spec if isinstance(spec, semantic_version.Spec) else semantic_version.Spec(spec)
 
 
 def try_getattr(obj, choices, default_value=None, raise_error=False):

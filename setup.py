@@ -45,7 +45,9 @@ setup(
     'argparse',
     'watchdog',
     'requests',
-    'clint'
+    'clint',
+    'appdirs',
+    'semantic_version'
     ],
   package_data={
     "PyBake": ["VERSION"]

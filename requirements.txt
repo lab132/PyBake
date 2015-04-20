@@ -6,3 +6,5 @@ bumpversion
 wheel
 twine
 clint
+appdirs
+semantic_version
