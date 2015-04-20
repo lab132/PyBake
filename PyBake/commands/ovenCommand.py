@@ -28,6 +28,9 @@ class OvenModuleManager:
                             nargs="?",
                             default=Path.cwd(),
                             help="The working directory when executing the `recipes_script`. Defaults to the current working dir.")
+    ovenParser.add_argument("-f", "--force",
+                            action="store_true",
+                            help="Ignore already existing pastries in the target output dir.")
     ovenParser.add_argument("-c", "--compression",
                             choices=zipCompressionLookup.keys(),
                             default="deflated",

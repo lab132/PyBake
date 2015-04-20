@@ -283,6 +283,10 @@ class PastryJSONEncoder(json.JSONEncoder):
       return dict(obj)
     if isinstance(obj, Path):
       return obj.as_posix()
+    if isinstance(obj, semantic_version.Version) or isinstance(obj, semantic_version.Spec):
+      return str(obj)
+    if isinstance(obj, set):
+      return [o for o in obj]
     return json.JSONEncoder.default(self, obj)
 
 

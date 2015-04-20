@@ -7,7 +7,7 @@ Use `PyBake oven` with this script to generate a series of pastries (.zip files)
 from PyBake import *
 from itertools import chain
 
-pastry_version = "milestone-6"
+pastryVersion = Version("0.6.0")
 
 # This is expected to be the ezEngine repo root.
 root = Path(".")
@@ -56,33 +56,40 @@ def extract_platform(path):
 
 
 @recipe
-def get_header_files(pots):
-  pot = pots.get("ezEngine_Headers", pastry_version)
+def get_header_files(pot):
+  """Get all header files."""
+  master = pot.get("ezEngine", pastryVersion)
+  master.addDependency("ezEngine_Headers", pastryVersion)
+  pastry = pot.get("ezEngine_Headers", pastryVersion)
   for ingredient in ezEnginePath_Headers.rglob("*.h"):
-    pot.append(ingredient)
+    pastry.addIngredient(ingredient)
 
 
 @recipe
-def get_runtime_files(pots):
-  path = ezEnginePath_Bin.glob("*")
-  for subpath in path:
-    if not subpath.is_dir() or subpath.match("*Test*"):
+def get_runtime_files(pot):
+  """Get all runtime files."""
+  master = pot.get("ezEngine", pastryVersion)
+  for path in ezEnginePath_Bin.glob("*"):
+    if not path.is_dir() or path.match("*Test*"):
       continue
-    platform = extract_platform(subpath)
-    pastryName = createFilename("ezEngine_Bin", platform)
-    pot = pots.get(pastryName, pastry_version)
-    for ingredient in chain(subpath.rglob("ez*.dll"), subpath.rglob("ez*.pdb"), subpath.rglob("ez*.so")):
-      pot.append(ingredient)
+    platform = extract_platform(path)
+    name = createFilename("ezEngine_Bin", platform)
+    master.addDependency(name, pastryVersion)
+    pastry = pot.get(name, pastryVersion)
+    for ingredient in chain(path.rglob("ez*.dll"), path.rglob("ez*.pdb"), path.rglob("ez*.so")):
+      pastry.addIngredient(ingredient)
 
 
 @recipe
-def get_compiletime_files(pots):
-  path = ezEnginePath_Lib.glob("*")
-  for subpath in path:
-    if not subpath.is_dir() or subpath.match("*Test*"):
+def get_compiletime_files(pot):
+  """Get all compile-time files."""
+  master = pot.get("ezEngine", pastryVersion)
+  for path in ezEnginePath_Lib.glob("*"):
+    if not path.is_dir() or path.match("*Test*"):
       continue
-    platform = extract_platform(subpath)
-    pastryName = createFilename("ezEngine_Lib", platform)
-    pot = pots.get(pastryName, pastry_version)
-    for ingredient in subpath.rglob("ez*.lib"):
-      pot.append(ingredient)
+    platform = extract_platform(path)
+    name = createFilename("ezEngine_Lib", platform)
+    master.addDependency(name, pastryVersion)
+    pastry = pot.get(name, pastryVersion)
+    for ingredient in path.rglob("ez*.lib"):
+      pastry.addIngredient(ingredient)
