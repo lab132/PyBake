@@ -20,7 +20,7 @@ class Pastry(Pastry):
     yield ("name", str(self.name))
     yield ("version", str(self.version))
     if len(self.dependencies):
-      yield ("dependencies", [d for d in self.dependencies])
+      yield ("dependencies", [{"name": dep[0], "version": dep[1]} for dep in self.dependencies])
 
   def addIngredient(self, ing):
     """

@@ -7,6 +7,7 @@ from zipfile import ZipFile
 import json
 from hashlib import sha1
 import requests
+from io import TextIOWrapper
 
 # Variables.
 from PyBake import dataDir, defaultPastriesDir, byteSuffixLookup
@@ -17,76 +18,85 @@ from PyBake import Pastry, Path, Menu, PastryJSONEncoder
 # Logging.
 from PyBake.logger import log, LogBlock
 
-def downloadPastries(menu, pastries, server, *, forceDownload=False):
-  for pastryData in pastries:
-    pastryName = pastryData["name"]
-    pastryVersionSpec = pastryData["version"]
+def downloadPastry(menu, pastryData, server, *, forceDownload=False):
+  pastryName = pastryData["name"]
+  pastryVersionSpec = pastryData["version"]
+  pastry = menu.get(pastryName, pastryVersionSpec)
+  if forceDownload and pastry:
+    log.info("Forcing re-download of already existing pastry: {}".format(pastry))
+  if not forceDownload and pastry:
+    log.dev("Skipping locally existing pastry: {}".format(pastry))
+    return
+  pastryRequestData = {"name": pastryName, "version": pastryVersionSpec}
+  with LogBlock("Requesting {}".format(pastryRequestData)):
+    response = requests.post("{}/get_pastry".format(server),
+                             data=pastryRequestData,
+                             stream=True)
+    if not response.ok:
+      log.error("Request failed:\n{}".format(response.text))
+      return False
+
+    size = 1024
+    if "content-length" in response.headers:
+      size = int(response.headers["content-length"])
+
+    if "x-pastry-version" not in response.headers:
+      log.error("Missing required http response header: X-Pastry-Version")
+      return False
+
+    pastryVersion = response.headers["x-pastry-version"]
+    pastry = menu.add(Pastry(name=pastryName, version=pastryVersion))
+    out_path = menu.makePath(pastry)
+    log.info("Saving to: {}".format(out_path.as_posix()))
+
+    with ByteProgressListener(maxSize=size) as progress:
+      with out_path.open("wb") as out_file:
+        chunk_size = 1024 * 4  # 4 KiB at a time.
+        for chunk in response.iter_content(chunk_size):
+          out_file.write(chunk)
+          progress(chunk_size)
+    log.success("Pastry received.")
+
+
+def installPastry(menu, receipt, pastryData, server, *, forceDownload=False, forceInstall=False):
+  def getDependencies(menu, pastry):
+    with ZipFile(menu.makePath(pastry).as_posix()) as pastryFile:
+      with pastryFile.open("pastry.json") as dataFile:
+        pastryData = json.load(TextIOWrapper(dataFile, encoding="UTF-8"))
+        return pastryData.get("dependencies", [])
+
+  pastryName = pastryData["name"]
+  pastryVersionSpec = pastryData["version"]
+  pastry = menu.get(pastryName, pastryVersionSpec)
+  if not pastry or forceDownload:
+    downloadPastry(menu, pastryData, server, forceDownload=forceDownload)
     pastry = menu.get(pastryName, pastryVersionSpec)
-    if forceDownload and pastry:
-      log.info("Forcing re-download of already existing pastry: {}".format(pastry))
-    if not forceDownload and pastry:
-      log.dev("Skipping locally existing pastry: {}".format(pastry))
-      continue
-    pastryRequestData = {"name": pastryName, "version": pastryVersionSpec}
-    with LogBlock("Requesting {}".format(pastryRequestData)):
-      response = requests.post("{}/get_pastry".format(server),
-                               data=pastryRequestData,
-                               stream=True)
-      if not response.ok:
-        log.error("Request failed:\n{}".format(response.text))
-        return False
-
-      size = 1024
-      if "content-length" in response.headers:
-        size = int(response.headers["content-length"])
-
-      if "x-pastry-version" not in response.headers:
-        log.error("Missing required http response header: X-Pastry-Version")
-        return False
-
-      pastryVersion = response.headers["x-pastry-version"]
-      pastry = menu.add(Pastry(name=pastryName, version=pastryVersion))
-      out_path = menu.makePath(pastry)
-      log.info("Saving to: {}".format(out_path.as_posix()))
-
-      with ByteProgressListener(maxSize=size) as progress:
-        with out_path.open("wb") as out_file:
-          chunk_size = 1024 * 4  # 4 KiB at a time.
-          for chunk in response.iter_content(chunk_size):
-            out_file.write(chunk)
-            progress(chunk_size)
-      log.success("Pastry received.")
-  return True
-
-
-def installPastries(menu, receipt, pastries, *, forceInstall=False):
-  for pastryData in pastries:
-    pastryName = pastryData["name"]
-    pastryVersionSpec = pastryData["version"]
-    pastry = menu.get(pastryName, pastryVersionSpec)
-    assert pastry is not None, "Menu HAS to have a suitable pastry!"
-    # TODO check if we have a newer version at this point.
-    installedPastry = receipt.get(pastry.name, pastry.version)
-    if installedPastry:
-      if not forceInstall:
-        log.info("Pastry already installed: {}".format(installedPastry))
-        continue
-      pastry = installedPastry
-      log.info("Re-installing pastry: {}".format(pastry))
-    else:
-      log.info("Installing pastry: {}".format(pastry))
-    print("pastryData:", pastryData)
-    pastryDestination = pastryData.get("destination", pastryData.get("dest", None))
-    assert pastryDestination, "Missing 'destination' key in pastry data from shopping list."
-    pastryDestination = Path(pastryDestination)
-    pastryDestination.safe_mkdir(parents=True)
-    pastryPath = menu.makePath(pastry)
-    log.info("{} => {}".format(pastryPath, pastryDestination))
-    with ZipFile(pastryPath.as_posix()) as pastryFile:
-      blackList = ("pastry.json", "ingredients.json")
-      filteredFiles = [f for f in pastryFile.namelist() if f not in blackList]
-      pastryFile.extractall(pastryDestination.as_posix(), members=filteredFiles)
-    receipt.add(pastry)
+  assert pastry is not None, "Menu HAS to have a suitable pastry at this point!"
+  # TODO check if we have a newer version at this point.
+  installedPastry = receipt.get(pastry.name, pastry.version)
+  if installedPastry:
+    if not forceInstall:
+      log.info("Pastry already installed: {}".format(installedPastry))
+      return
+    pastry = installedPastry
+    log.info("Re-installing pastry: {}".format(pastry))
+  else:
+    log.info("Installing pastry: {}".format(pastry))
+  print("pastryData:", pastryData)
+  pastryDestination = pastryData.get("destination", pastryData.get("dest", None))
+  assert pastryDestination, "Missing 'destination' key in pastry data from shopping list."
+  pastryDestination = Path(pastryDestination)
+  pastryDestination.safe_mkdir(parents=True)
+  pastryPath = menu.makePath(pastry)
+  for dep in getDependencies(menu, pastry):
+    dep["destination"] = pastryDestination
+    installPastry(menu, receipt, dep, server, forceDownload=forceDownload, forceInstall=forceInstall)
+  log.info("{} => {}".format(pastryPath, pastryDestination))
+  with ZipFile(pastryPath.as_posix()) as pastryFile:
+    blackList = ("pastry.json", "ingredients.json")
+    filteredFiles = [f for f in pastryFile.namelist() if f not in blackList]
+    pastryFile.extractall(pastryDestination.as_posix(), members=filteredFiles)
+  receipt.add(pastry)
 
 
 class ByteProgressListener:
@@ -213,16 +223,11 @@ def run(*, shoppingList="shoppingList.py", forceInstall=False, forceDownload=Fal
     menu = Menu(pastriesRoot)
     log.debug("Menu file path: {}".format(menu.filePath.as_posix()))
     menu.load()
-    with LogBlock("Downloading Pastries"):
-      ok = downloadPastries(menu, pastries, server, forceDownload=forceDownload)
-      if not ok:
-        log.error("An error occurred when trying to download a dependency.")
-        return -1
-    menu.save()
-
     receipt = getReceipt(shoppingListPath)
     log.debug("Receipt file path: {}".format(receipt.filePath.as_posix()))
     receipt.load()
     with LogBlock("Installing Pastries"):
-      installPastries(menu, receipt, pastries, forceInstall=forceInstall)
+      for pastry in pastries:
+        installPastry(menu, receipt, pastry, server, forceInstall=forceInstall)
     receipt.save()
+    menu.save()
