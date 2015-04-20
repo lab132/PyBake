@@ -489,70 +489,64 @@ class Menu:
     with filePath.open("w") as registryFile:
       json.dump(self.registry, registryFile, cls=PastryJSONEncoder, indent=2, sort_keys=True)
 
-  def add(self, pastryDesc):
+  def add(self, pastry):
     """
     Add a pastry to the menu.
 
-    If the pastry already exists, it is ignored and `False` is returned.
+    If the pastry already exists, the existing instance is returned. Otherwise param `pastry` is added and returned.
     """
-    assert hasattr(pastryDesc, "name"), "Need a Pastry compatible instance!"
-    assert hasattr(pastryDesc, "version"), "Need a Pastry compatible instance!"
-    if not self.exists(pastryDesc):
-      self.registry.append(pastryDesc)
-      return True
-    return False
+    assert hasattr(pastry, "name") and hasattr(pastry, "version"), "Expecting a `Pastry` compatible object!"
+    exisitng = self.get(pastry.name, VersionSpec(pastry.version))
+    if exisitng:
+      return exisitng
+    self.registry.append(pastry)
+    return pastry
 
-  def remove(self, pastryDesc):
+  def remove(self, pastry):
     """
     Try to remove the given pastry.
 
     :return: `False` on failure.
     """
     try:
-      self.registry.remove(pastryDesc)
+      self.registry.remove(pastry)
     except ValueError:
       return False
     return True
 
-  def get(self, pastryDesc, default=None):
+  def get(self, name, spec, *, default=None):
     """
     Try get the entry for the given pastry.
-
     :return: `default` if no such pastry exists.
     """
-    try:
-      i = self.registry.index(pastryDesc)
-    except ValueError:
-      return default
-    return self.registry[i]
+    spec = VersionSpec(spec)
+    candidates = []
+    for pastry in self.registry:
+      if pastry.name == name and pastry.version in spec:
+        candidates.append(pastry)
+    return max(candidates) if len(candidates) else default
 
-  def makePath(self, pastryDesc):
+  def makePath(self, pastry):
     """
     Creates a path for the pastry with respect to the menu dir.
     :param pastryDesc: The pastry. May not be `None`
     :return: The final path for the pastry.
     :example:
     >>> menu = Menu()
-    >>> = menu.makePath(Pastry(name="foo", version="v0.1.0"))
-    "<current_working_dir>/.pastries/foo_v0_1_0.zip"
+    >>> = menu.makePath(Pastry(name="foo", version="0.1.0"))
+    "<current_working_dir>/.pastries/foo_0_1_0.zip"
     """
-    assert pastryDesc is not None
-    return self.filePath.parent / pastryDesc.path
-
-  def exists(self, pastryDesc):
-    """
-    Whether the pastry exists or not.
-    """
-    return self.get(pastryDesc, default=None) is not None
-
-  def numEntries(self):
-    """
-    Returns the number of current menu entries.
-    """
-    return len(self.registry)
+    return self.pastryDirPath / pastry.path
 
   def clear(self):
     """
     Clear the registry entries.
     """
     self.registry.clear()
+
+  def __iter__(self):
+    for p in self.registry:
+      yield p
+
+  def __len__(self):
+    return len(self.registry)

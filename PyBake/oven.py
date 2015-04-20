@@ -1,25 +1,27 @@
 """
 Generate a list of tagged files that will be combined to a crumble.
 """
-
-from importlib import import_module
 from PyBake import *
 import json
 import zipfile
-import textwrap
 
 
 class Pot:
-  """Manages new pastries when processing recipes."""
+  """
+  Manages new pastries when processing recipes.
+  """
 
   def __init__(self):
     self.ingredients = {}
 
   def get(self, name, version):
-    """Get a pastry matching the given name and version."""
+    """
+    Get a pastry matching the given name and version.
+    The version must be compliant with the semantic version scheme: http://semver.org.
+    """
     assert name is not None, "`name` must not be None!"
-    assert version is not None, "`version` must not be None!"
-    key = (name, version)
+    assert semantic_version.validate(version), "Invalid version string. Check with http://semver.org for a valid version."
+    key = (name, Version(version))
     listOfIngredients = self.ingredients.get(key, None)
     if listOfIngredients is None:
       log.debug("Creating new entry in pot: {}".format(key))
@@ -57,6 +59,7 @@ def zipBaker(*, menu, pot, options):
     for key, ingredients in pot.ingredients.items():
       pastry = Pastry(name=key[0], version=key[1])
       if menu.add(pastry) is False:
+        log.debug("Ignoring pastry because it is already on the menu: {}".format(pastry))
         continue
       with LogBlock("Pastry: {} with {} ingredients".format(pastry, len(ingredients))):
         zipFilePath = menu.makePath(pastry)
