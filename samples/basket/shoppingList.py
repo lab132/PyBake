@@ -9,12 +9,7 @@ server_config = local
 
 pastries = [
   {
-    "name" : "ezEngine_Headers",
-    "version" : ">=0.6.0",
-    "destination" : "thirdParty/ezEngine"
-  },
-  {
-    "name" : "ezEngine_Bin_Win64Vs2013Debug",
+    "name" : "ezEngine",
     "version" : ">=0.6.0",
     "destination" : "thirdParty/ezEngine"
   },
