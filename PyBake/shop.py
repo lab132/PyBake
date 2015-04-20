@@ -3,7 +3,7 @@ Serving pastries to customers, fresh from the oven!
 """
 
 from flask import Flask, request, session, g, redirect, url_for, abort, \
-    render_template, flash, jsonify, send_from_directory
+    render_template, flash, jsonify, send_from_directory, make_response
 
 import json
 
@@ -13,27 +13,32 @@ from importlib import import_module
 import textwrap
 
 
-def processPastryUpload(menu, pastryDesc, pastryFile):
-  with LogBlock("Processing Pastry Upload: {}".format(pastryDesc)):
-    if menu.exists(pastryDesc):
-      log.info("Pastry already exists. Ignoring.")
+def processPastryUpload(menu, pastry, pastryFile):
+  log.info("Pastry: {}".format(pastry))
+  existing = menu.get(pastry.name, pastry.version)
+  if existing:
+    log.info("Pastry already exists. Ignoring.")
+    return
+  # Get the target path on the local system for the pastry.
+  pastryPath = menu.makePath(pastry)
+  log.info("Saving pastry to: {}".format(pastryPath.as_posix()))
+  # Try saving the pastry.
+  pastryFile.save(pastryPath.as_posix())
+  # Add that pastry to the menu.
+  menu.add(pastry)
+  print("+++++++++++ saving menu")
+  # Make sure the menu database is up to date.
+  menu.save()
+
+
+def getPastry(menu, pastryName, pastryVersionSpec):
+  with LogBlock("Finding Pastry {} with version spec {}".format(pastryName, pastryVersionSpec)):
+    pastry = menu.get(pastryName, pastryVersionSpec)
+    if not pastry:
+      log.error("Pastry not found.")
       return
-    # Get the target path on the local system for the pastry.
-    pastryPath = menu.makePath(pastryDesc)
-    log.info("Saving pastry to: {}".format(pastryPath.as_posix()))
-    # Try saving the pastry.
-    pastryFile.save(pastryPath.as_posix())
-    # Add that pastry to the menu.
-    menu.add(pastryDesc)
-    # Make sure the menu database is up to date.
-    menu.save()
-
-
-def getPastryFilePath(menu, pastryDesc):
-  with LogBlock("Finding Pastry File Path"):
-    if menu.exists(pastryDesc):
-      return menu.makePath(pastryDesc)
-    log.error("Pastry not found.")
+    log.dev("Pastry '{}' found at: {}".format(pastry, menu.makePath(pastry).as_posix()))
+    return pastry
 
 
 def Shop(*, menu, name=__name__):
@@ -84,7 +89,9 @@ def Shop(*, menu, name=__name__):
           name = data["name"][0]
           version = data["version"][0]
           with ScopedLogSink() as sink:
-            processPastryUpload(menu, Pastry(name=name, version=version), files["pastry"][0])
+            pastry = Pastry(name=name, version=version)
+            with LogBlock("Processing Pastry Upload: {}".format(pastry)):
+              processPastryUpload(menu, pastry, files["pastry"][0])
             errors.extend(sink.logged["error"])
 
         if errors and len(errors) != 0:
@@ -114,22 +121,25 @@ def Shop(*, menu, name=__name__):
         if "version" not in data:
           errors.append("missing pastry 'version'")
 
-        pastry_path = None
+        pastryPath = None
         if len(errors) == 0:
           # `data` is a multi-dict, which is why we need to extract it here.
-          pastryDesc = Pastry(name=data["name"][0],
-                                  version=data["version"][0])
+          name = data["name"][0]
+          version = data["version"][0]
           with ScopedLogSink() as sink:
-            pastry_path = getPastryFilePath(menu, pastryDesc)
+            pastry = getPastry(menu, name, version)
+            if pastry:
+              pastryPath = menu.makePath(pastry)
             errors.extend(sink.logged["error"])
 
         if errors and len(errors) != 0:
-          print("errors:", errors)
           response["errors"] = errors
           response["result"] = "Error"
           return jsonify(response), 400
-        log.info("Sending file: {}".format(pastry_path.as_posix()))
-        return send_from_directory(pastry_path.parent.as_posix(), pastry_path.name)
+        log.info("Sending file: {}".format(pastryPath.as_posix()))
+        response = make_response(send_from_directory(pastryPath.parent.as_posix(), pastryPath.name))
+        response.headers["X-Pastry-Version"] = str(pastry.version)
+        return response
 
     return app
 

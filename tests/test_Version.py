@@ -8,3 +8,4 @@ class TestVersion(TestCase):
   def test_VersionSpec(self):
     s = VersionSpec(">0.1.0")
     self.assertIs(s, VersionSpec(s))
+    self.assertEqual(str(VersionSpec(Version("0.1.0"))), "==0.1.0")

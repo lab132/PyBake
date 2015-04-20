@@ -13,6 +13,7 @@ import re
 import json
 import zipfile
 from appdirs import AppDirs
+import semantic_version
 
 
 if __name__ == "__main__":
@@ -55,12 +56,13 @@ defaultPastriesDir = dataDir / "pastries"
 defaultPastriesDir.safe_mkdir(parents=True)
 
 
+
+
 def Version(version):
   """
   Tries to create a `semantic_version.Version` object from param `version`.
   :param version: If it is a string, it must still be compliant with the semantic versioning scheme (http://semver.org/)
   """
-  import semantic_version
   return version if isinstance(version, semantic_version.Version) else semantic_version.Version(version)
 
 
@@ -72,8 +74,11 @@ def VersionSpec(spec):
   VersionSpec(">0.1.0")
   VersionSpec(">0.1.0,<0.3.0,!=0.2.1-rc1")
   """
-  import semantic_version
-  return spec if isinstance(spec, semantic_version.Spec) else semantic_version.Spec(spec)
+  if isinstance(spec, semantic_version.Version):
+    return semantic_version.Spec("=={}".format(spec))
+  if isinstance(spec, semantic_version.Spec):
+    return spec
+  return semantic_version.Spec(spec)
 
 
 def try_getattr(obj, choices, default_value=None, raise_error=False):
@@ -323,20 +328,20 @@ class Pastry:
     """
     Instantiate a pastry description from either a data dict, or a name and version.
     :param data: A dict that contains a "name" and "version" key.
-    :param name: The
-    :param version:
-    :return: A pastry desc instance.
+    :param name: The name of the pastry (str).
+    :param version: The version of the pastry. Must be compliant with the semantic version scheme (http://semver.org/).
+    :return: A pastry desc instance.1
 
     :example:
-    data1 = {"name": "foo", "version": "v0.1.0"}
+    data1 = {"name": "foo", "version": "1.2.3"}
     p1 = Pastry(data1)
-    p2 = Pastry(name="foo", version="v0.1.0")
+    p2 = Pastry(name="foo", version="1.0.0-rc1")
     """
     if data:
       name = data["name"]
       version = data["version"]
-    self.name = name
-    self.version = version
+    self.name = str(name)
+    self.version = Version(version)
 
   @property
   def path(self):
@@ -357,7 +362,7 @@ class Pastry:
     d = dict(p)
     """
     yield ("name", self.name)
-    yield ("version", self.version)
+    yield ("version", str(self.version))
 
   def __str__(self):
     return "{} {}".format(self.name, self.version)
@@ -484,70 +489,64 @@ class Menu:
     with filePath.open("w") as registryFile:
       json.dump(self.registry, registryFile, cls=PastryJSONEncoder, indent=2, sort_keys=True)
 
-  def add(self, pastryDesc):
+  def add(self, pastry):
     """
     Add a pastry to the menu.
 
-    If the pastry already exists, it is ignored and `False` is returned.
+    If the pastry already exists, the existing instance is returned. Otherwise param `pastry` is added and returned.
     """
-    assert hasattr(pastryDesc, "name"), "Need a Pastry compatible instance!"
-    assert hasattr(pastryDesc, "version"), "Need a Pastry compatible instance!"
-    if not self.exists(pastryDesc):
-      self.registry.append(pastryDesc)
-      return True
-    return False
+    assert hasattr(pastry, "name") and hasattr(pastry, "version"), "Expecting a `Pastry` compatible object!"
+    exisitng = self.get(pastry.name, VersionSpec(pastry.version))
+    if exisitng:
+      return exisitng
+    self.registry.append(pastry)
+    return pastry
 
-  def remove(self, pastryDesc):
+  def remove(self, pastry):
     """
     Try to remove the given pastry.
 
     :return: `False` on failure.
     """
     try:
-      self.registry.remove(pastryDesc)
+      self.registry.remove(pastry)
     except ValueError:
       return False
     return True
 
-  def get(self, pastryDesc, default=None):
+  def get(self, name, spec, *, default=None):
     """
     Try get the entry for the given pastry.
-
     :return: `default` if no such pastry exists.
     """
-    try:
-      i = self.registry.index(pastryDesc)
-    except ValueError:
-      return default
-    return self.registry[i]
+    spec = VersionSpec(spec)
+    candidates = []
+    for pastry in self.registry:
+      if pastry.name == name and pastry.version in spec:
+        candidates.append(pastry)
+    return max(candidates) if len(candidates) else default
 
-  def makePath(self, pastryDesc):
+  def makePath(self, pastry):
     """
     Creates a path for the pastry with respect to the menu dir.
     :param pastryDesc: The pastry. May not be `None`
     :return: The final path for the pastry.
     :example:
     >>> menu = Menu()
-    >>> = menu.makePath(Pastry(name="foo", version="v0.1.0"))
-    "<current_working_dir>/.pastries/foo_v0_1_0.zip"
+    >>> = menu.makePath(Pastry(name="foo", version="0.1.0"))
+    "<current_working_dir>/.pastries/foo_0_1_0.zip"
     """
-    assert pastryDesc is not None
-    return self.filePath.parent / pastryDesc.path
-
-  def exists(self, pastryDesc):
-    """
-    Whether the pastry exists or not.
-    """
-    return self.get(pastryDesc, default=None) is not None
-
-  def numEntries(self):
-    """
-    Returns the number of current menu entries.
-    """
-    return len(self.registry)
+    return self.pastryDirPath / pastry.path
 
   def clear(self):
     """
     Clear the registry entries.
     """
     self.registry.clear()
+
+  def __iter__(self):
+    for p in self.registry:
+      yield p
+
+  def __len__(self):
+    return len(self.registry)
