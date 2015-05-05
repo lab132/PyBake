@@ -12,7 +12,7 @@ import requests
 
 
 # Note: This function could run concurrently.
-def uploadPastry(menu, pastry, server):
+def uploadPastry(menu, pastry, server, *, force):
   """
   Uploads a pastry to the server.
   """
@@ -28,7 +28,7 @@ def uploadPastry(menu, pastry, server):
       zippedPastry = Pastry(data=json.loads(pastryBytes.decode("UTF-8")))
 
   if zippedPastry != pastry:
-    log.error("")
+    log.error("Pastry infos from the menu and the pastry.json inside it do not match: {} vs. {}".format(zippedPastry, pastry))
     return
 
   # Construct the `files` dictionary with the pastry package (.zip).
@@ -36,9 +36,12 @@ def uploadPastry(menu, pastry, server):
 
   postUrl = "{}/upload_pastry".format(server)
   with LogBlock("Uploading {}".format(pastry)):
+    requestData = dict(pastry)
+    requestData["force"] = bool(force)
     log.info("Sending data...")
+    log.debug("Data: {}".format(requestData))
     # Send the post request with some meta data and the actual file data.
-    response = requests.post(postUrl, data=dict(pastry), files=files)
+    response = requests.post(postUrl, data=requestData, files=files)
 
     log.dev("Status: {}\n{}".format(response.status_code, response.text))
     if response.ok:
@@ -47,23 +50,11 @@ def uploadPastry(menu, pastry, server):
       log.error("Failed to upload pastry.")
 
 
-def importConfigScript(configPath):
-  with ChangeDir(configPath.parent):
-    if configPath.suffix == ".py":
-      config = configPath.parent / configPath.stem
-    return import_module(config.name)
-
-
-
-def run(*, pastryPaths, configPath, **kwargs):
+def run(*, pastryPaths, configPath, force, **kwargs):
   """Deposit a pastry in a shop."""
-
-  # Make sure the config file exists.
-  configPath = configPath.resolve()
-
   # Import the config script.
   log.debug("Importing config script: {}".format(configPath.as_posix()))
-  config = importConfigScript(configPath)
+  config = importFromFile(configPath)
   server = try_getattr(config, ("server", "serverConfig"), raise_error=True)
 
   with LogBlock("Server: {}".format(server)):
@@ -72,4 +63,4 @@ def run(*, pastryPaths, configPath, **kwargs):
       menu = Menu(pastryPath)
       menu.load()
       for pastry in menu.registry:
-        uploadPastry(menu, pastry, server)
+        uploadPastry(menu, pastry, server, force=force)

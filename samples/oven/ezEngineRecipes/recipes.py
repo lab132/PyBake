@@ -61,6 +61,7 @@ def get_header_files(pot):
   master = pot.get("ezEngine", pastryVersion)
   master.addDependency("ezEngine_Headers", pastryVersion)
   pastry = pot.get("ezEngine_Headers", pastryVersion)
+  add_common(pastry)
   for ingredient in ezEnginePath_Headers.rglob("*.h"):
     pastry.addIngredient(ingredient)
 
@@ -76,6 +77,7 @@ def get_runtime_files(pot):
     name = createFilename("ezEngine_Bin", platform)
     master.addDependency(name, pastryVersion)
     pastry = pot.get(name, pastryVersion)
+    add_common(pastry)
     for ingredient in chain(path.rglob("ez*.dll"), path.rglob("ez*.pdb"), path.rglob("ez*.so")):
       pastry.addIngredient(ingredient)
 
@@ -91,5 +93,17 @@ def get_compiletime_files(pot):
     name = createFilename("ezEngine_Lib", platform)
     master.addDependency(name, pastryVersion)
     pastry = pot.get(name, pastryVersion)
+    add_common(pastry)
+    pastry.addIngredient("exports_{name}{bits}{generator}.cmake".format(**vars(platform)))
     for ingredient in path.rglob("ez*.lib"):
       pastry.addIngredient(ingredient)
+
+
+def add_common(pastry):
+  """
+  Add common ingredients to a pastry.
+  """
+  pastry.addIngredient("README.md")
+  pastry.addIngredient("License.txt")
+  for ingredient in root.glob("*.cmake"):
+    pastry.addIngredient(ingredient)

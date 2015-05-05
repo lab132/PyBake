@@ -203,7 +203,6 @@ class ScopedLogSink:
   def logMessage(self, *, verbosity, message, blockLevel):
     """Handle the logging event."""
     if verbosity <= LogLevel.Warning:
-      print("appending: ", message)
       self.logged["error"].append(message)
 
   def logBlock(self, *, block, isOpening):

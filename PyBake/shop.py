@@ -13,12 +13,14 @@ from importlib import import_module
 import textwrap
 
 
-def processPastryUpload(menu, pastry, pastryFile):
+def processPastryUpload(menu, pastry, pastryFile, *, forceUpload):
   log.info("Pastry: {}".format(pastry))
   existing = menu.get(pastry.name, pastry.version)
-  if existing:
+  if existing and not forceUpload:
     log.info("Pastry already exists. Ignoring.")
     return
+  if existing and forceUpload:
+    log.info("Forced upload.")
   # Get the target path on the local system for the pastry.
   pastryPath = menu.makePath(pastry)
   log.info("Saving pastry to: {}".format(pastryPath.as_posix()))
@@ -26,12 +28,14 @@ def processPastryUpload(menu, pastry, pastryFile):
   pastryFile.save(pastryPath.as_posix())
   # Add that pastry to the menu.
   menu.add(pastry)
-  print("+++++++++++ saving menu")
   # Make sure the menu database is up to date.
   menu.save()
 
 
 def getPastry(menu, pastryName, pastryVersionSpec):
+  """
+  Retrieve a pastry with the given name and version spec.
+  """
   with LogBlock("Finding Pastry {} with version spec {}".format(pastryName, pastryVersionSpec)):
     pastry = menu.get(pastryName, pastryVersionSpec)
     if not pastry:
@@ -84,6 +88,10 @@ def Shop(*, menu, name=__name__):
         if "pastry" not in files:
           errors.append("missing pastry file")
 
+        force = False
+        if "force" in data:
+          force = bool(data["force"][0])
+
         if len(errors) == 0:
           # `data` is a multi-dict, which is why we need to extract it here.
           name = data["name"][0]
@@ -91,7 +99,7 @@ def Shop(*, menu, name=__name__):
           with ScopedLogSink() as sink:
             pastry = Pastry(name=name, version=version)
             with LogBlock("Processing Pastry Upload: {}".format(pastry)):
-              processPastryUpload(menu, pastry, files["pastry"][0])
+              processPastryUpload(menu, pastry, files["pastry"][0], forceUpload=force)
             errors.extend(sink.logged["error"])
 
         if errors and len(errors) != 0:

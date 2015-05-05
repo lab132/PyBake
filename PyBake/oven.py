@@ -16,7 +16,6 @@ class Pastry(Pastry):
     self.dependencies = set()
 
   def __iter__(self):
-    log.debug("dicting pastry! {}".format(self))
     yield ("name", str(self.name))
     yield ("version", str(self.version))
     if len(self.dependencies):
@@ -119,39 +118,35 @@ def run(*,                   # Keyword arguments only.
     # Make sure the working dir exists.
     working_dir = working_dir.resolve()
 
-    # Create an empty pot.
-    pot = Pot()
-
-    # Change into the working directory given by the user.
-    with ChangeDir(working_dir):
-      log.debug("Working dir for recipes script: {}".format(working_dir.as_posix()))
-
-      if not recipes_script.exists():
-        log.error("Recipes script does not exist: {}".format(recipes_script.as_posix()))
-        return 1
-
-      log.info("Processing '{0}'".format(recipes_script))
-
-      if recipes_script.suffix == ".py":
-        # Remove file extension.
-        recipes_script = recipes_script.parent / recipes_script.stem
-
-      # Load the recipe, which will register some handlers.
-      import_module(recipes_script.as_posix())
-      if len(recipes) == 0:
-        log.error("No recipes found. Make sure to create functions in your script and decorate them with @recipe.")
-        return
-
-      for rcp in recipes:
-        # Call the recipe with our pot.
-        rcp(pot)
+    recipes_script = recipes_script.resolve()
 
     # We always treat `output` as a directory.
     output.safe_mkdir(parents=True)
+    # Store the full path
+    output = output.resolve()
 
-    menu = Menu(output)
-    log.info("Menu file path: {}".format(menu.filePath.as_posix()))
-    menu.load()
-    # All ingredients are collected in the pot now, so the baker can start working.
-    bakerFunc(menu=menu, force=force, pot=pot, options=kwargs)
-    menu.save()
+    # Change into the working directory given by the user.
+    with ChangeDir(working_dir):
+      with LogBlock("Processing Script: {}".format(recipes_script.as_posix())):
+        log.debug("Full path: {}".format(recipes_script.as_posix()))
+        log.debug("Working dir: {}".format(working_dir.as_posix()))
+        # Import the user script.
+        importFromFile(recipes_script)
+
+      if len(recipes) == 0:
+        log.error("No recipes found. Make sure to create functions in your script and decorate them with @recipe.")
+        return 2
+
+      with LogBlock("Processing Recipes"):
+        # Create an empty pot.
+        pot = Pot()
+        for rcp in recipes:
+          # Call the recipe with our pot.
+          rcp(pot)
+
+      menu = Menu(output)
+      log.info("Menu file path: {}".format(menu.filePath.as_posix()))
+      menu.load()
+      # All ingredients are collected in the pot now, so the baker can start working.
+      bakerFunc(menu=menu, force=force, pot=pot, options=kwargs)
+      menu.save()

@@ -12,13 +12,13 @@ from io import TextIOWrapper
 # Variables.
 from PyBake import dataDir, defaultPastriesDir, byteSuffixLookup
 # Functions.
-from PyBake import try_getattr, importFromFile
+from PyBake import try_getattr, importFromFile, createFilename
 # Classes.
 from PyBake import Pastry, Path, Menu, PastryJSONEncoder
 # Logging.
 from PyBake.logger import log, LogBlock
 
-def downloadPastry(menu, pastryData, server, *, forceDownload=False):
+def downloadPastry(menu, pastryData, server, *, forceDownload):
   pastryName = pastryData["name"]
   pastryVersionSpec = pastryData["version"]
   pastry = menu.get(pastryName, pastryVersionSpec)
@@ -58,7 +58,7 @@ def downloadPastry(menu, pastryData, server, *, forceDownload=False):
     log.success("Pastry received.")
 
 
-def installPastry(menu, receipt, pastryData, server, *, forceDownload=False, forceInstall=False):
+def installPastry(menu, receipt, pastryData, server, *, forceDownload, forceInstall):
   def getDependencies(menu, pastry):
     with ZipFile(menu.makePath(pastry).as_posix()) as pastryFile:
       with pastryFile.open("pastry.json") as dataFile:
@@ -67,13 +67,28 @@ def installPastry(menu, receipt, pastryData, server, *, forceDownload=False, for
 
   pastryName = pastryData["name"]
   pastryVersionSpec = pastryData["version"]
+  callback = pastryData.get("callback", None)
+  if callback:
+    callback("pre-download", pastryData)
+    pastryName = pastryData.get("forceDownload", pastryName)
+    pastryVersionSpec = pastryData.get("forceInstall", pastryVersionSpec)
   pastry = menu.get(pastryName, pastryVersionSpec)
   if not pastry or forceDownload:
     downloadPastry(menu, pastryData, server, forceDownload=forceDownload)
     pastry = menu.get(pastryName, pastryVersionSpec)
+    pastryData["pastry"] = pastry
+    callback = pastryData.get("callback", None)
+    if callback:
+      callback("post-download", pastryData)
+      forceInstall = pastryData.get("forceInstall", pastryName)
   assert pastry is not None, "Menu HAS to have a suitable pastry at this point!"
   # TODO check if we have a newer version at this point.
   installedPastry = receipt.get(pastry.name, pastry.version)
+  callback = pastryData.get("callback", None)
+  if callback:
+    pastryData["pastry"] = installedPastry
+    callback("pre-install", pastryData)
+    forceInstall = pastryData.get("forceInstall", pastryName)
   if installedPastry:
     if not forceInstall:
       log.info("Pastry already installed: {}".format(installedPastry))
@@ -82,11 +97,13 @@ def installPastry(menu, receipt, pastryData, server, *, forceDownload=False, for
     log.info("Re-installing pastry: {}".format(pastry))
   else:
     log.info("Installing pastry: {}".format(pastry))
-  print("pastryData:", pastryData)
-  pastryDestination = pastryData.get("destination", pastryData.get("dest", None))
-  assert pastryDestination, "Missing 'destination' key in pastry data from shopping list."
+  pastryDestination = pastryData.get("destination", None)
+  if not pastryDestination:
+    pastryDestination = createFilename(pastry.name)
+    pastryData["destination"] = pastryDestination
   pastryDestination = Path(pastryDestination)
   pastryDestination.safe_mkdir(parents=True)
+  pastryDestination = pastryDestination.resolve()
   pastryPath = menu.makePath(pastry)
   for dep in getDependencies(menu, pastry):
     dep["destination"] = pastryDestination
@@ -97,6 +114,10 @@ def installPastry(menu, receipt, pastryData, server, *, forceDownload=False, for
     filteredFiles = [f for f in pastryFile.namelist() if f not in blackList]
     pastryFile.extractall(pastryDestination.as_posix(), members=filteredFiles)
   receipt.add(pastry)
+  callback = pastryData.get("callback", None)
+  if callback:
+    pastryData["pastry"] = pastry
+    callback("post-install", pastryData)
 
 
 class ByteProgressListener:
@@ -215,19 +236,30 @@ def run(*, shoppingList="shoppingList.py", forceInstall=False, forceDownload=Fal
   with LogBlock("Basket"):
     shoppingListPath = shoppingList.resolve()
     shoppingList = importFromFile(shoppingListPath)
+
+    callback = try_getattr(shoppingList, ["callback"])
+    if callback:
+      callback("pre-process", pastries)
+
     server = try_getattr(shoppingList, ("server_config", "server"), raise_error=True)
     pastries = try_getattr(shoppingList, ("pastries", "pastry"), raise_error=True)
     pastriesRoot = Path(try_getattr(shoppingList, ("pastriesRoot", "pastriesDir", "pastriesPath"), default_value=defaultPastriesDir))
     pastriesRoot.safe_mkdir(parents=True)
 
-    menu = Menu(pastriesRoot)
-    log.debug("Menu file path: {}".format(menu.filePath.as_posix()))
-    menu.load()
-    receipt = getReceipt(shoppingListPath)
-    log.debug("Receipt file path: {}".format(receipt.filePath.as_posix()))
-    receipt.load()
+    with LogBlock("Load Menu"):
+      menu = Menu(pastriesRoot)
+      log.debug("Menu file path: {}".format(menu.filePath.as_posix()))
+      menu.load()
+    with LogBlock("Load Recipe"):
+      receipt = getReceipt(shoppingListPath)
+      log.debug("Receipt file path: {}".format(receipt.filePath.as_posix()))
+      receipt.load()
     with LogBlock("Installing Pastries"):
       for pastry in pastries:
-        installPastry(menu, receipt, pastry, server, forceInstall=forceInstall)
+        installPastry(menu, receipt, pastry, server, forceInstall=forceInstall, forceDownload=forceDownload)
     receipt.save()
     menu.save()
+
+    callback = try_getattr(shoppingList, ["callback"])
+    if callback:
+      callback("post-process", pastries)
